@@ -13,9 +13,10 @@ async function boot(): Promise<void> {
     resizeTo: stage,
     antialias: true,
     autoDensity: true,
-    resolution: window.devicePixelRatio || 1,
+    resolution: Math.min(window.devicePixelRatio || 1, 2),
   });
   stage.appendChild(app.canvas);
+  app.canvas.addEventListener("contextmenu", (e) => e.preventDefault());
 
   const chainEl = document.querySelector("#chain");
   const clearedEl = document.querySelector("#cleared");

@@ -1,5 +1,5 @@
-import { Application, Container, Graphics } from "pixi.js";
-import { COLS, ROWS, type Pos, type Tile } from "../engine/types.ts";
+import { Application, Container, Graphics, type FederatedPointerEvent } from "pixi.js";
+import { COLS, ROWS, inBounds, type Pos, type Tile } from "../engine/types.ts";
 import { Game } from "../engine/game.ts";
 
 const PALETTE = [0xef4444, 0x3b82f6, 0x22c55e, 0xeab308, 0xa855f7];
@@ -10,21 +10,65 @@ export type HudHooks = {
   setCleared: (value: number) => void;
 };
 
+type Drag = {
+  pos: Pos;
+  x: number;
+  y: number;
+};
+
 export function mountBoard(app: Application, game: Game, hud: HudHooks): void {
   const layer = new Container();
   app.stage.addChild(layer);
+  app.stage.eventMode = "static";
+  app.stage.hitArea = app.screen;
 
   let selected: Pos | null = null;
+  let cellSize = 40;
+  let drag: Drag | null = null;
 
   const layout = () => {
-    const pad = 48;
-    const available = Math.min(app.screen.width, app.screen.height) - pad * 2;
-    const cell = Math.floor((available - GAP * (COLS - 1)) / COLS);
+    const padX = 16;
+    const padY = 12;
+    const availableW = app.screen.width - padX * 2;
+    const availableH = app.screen.height - padY * 2;
+    const cell = Math.max(
+      28,
+      Math.floor((Math.min(availableW, availableH) - GAP * (COLS - 1)) / COLS),
+    );
+    cellSize = cell;
     const boardW = cell * COLS + GAP * (COLS - 1);
     const boardH = cell * ROWS + GAP * (ROWS - 1);
     layer.x = Math.floor((app.screen.width - boardW) / 2);
     layer.y = Math.floor((app.screen.height - boardH) / 2);
     return cell;
+  };
+
+  const applySwap = (a: Pos, b: Pos) => {
+    selected = null;
+    const outcome = game.trySwap(a, b);
+    hud.setChain(game.lastChain);
+    hud.setCleared(game.totalCleared);
+    if (outcome.bounced) selected = a;
+    draw();
+  };
+
+  const finishDrag = (e: FederatedPointerEvent) => {
+    if (!drag) return;
+    const start = drag;
+    drag = null;
+    const dx = e.global.x - start.x;
+    const dy = e.global.y - start.y;
+    const thresh = cellSize * 0.28;
+    if (Math.abs(dx) > thresh || Math.abs(dy) > thresh) {
+      const b: Pos =
+        Math.abs(dx) > Math.abs(dy)
+          ? { r: start.pos.r, c: start.pos.c + (dx > 0 ? 1 : -1) }
+          : { r: start.pos.r + (dy > 0 ? 1 : -1), c: start.pos.c };
+      if (inBounds(b)) applySwap(start.pos, b);
+      else draw();
+      return;
+    }
+    onTap(start.pos);
   };
 
   const draw = () => {
@@ -40,7 +84,9 @@ export function mountBoard(app: Application, game: Game, hud: HudHooks): void {
         drawTile(g, tile, cell, selected?.r === r && selected?.c === c);
         g.eventMode = "static";
         g.cursor = "pointer";
-        g.on("pointertap", () => onTap({ r, c }));
+        g.on("pointerdown", (e: FederatedPointerEvent) => {
+          drag = { pos: { r, c }, x: e.global.x, y: e.global.y };
+        });
         layer.addChild(g);
       }
     }
@@ -57,16 +103,15 @@ export function mountBoard(app: Application, game: Game, hud: HudHooks): void {
       draw();
       return;
     }
-    const a = selected;
-    selected = null;
-    const outcome = game.trySwap(a, pos);
-    hud.setChain(game.lastChain);
-    hud.setCleared(game.totalCleared);
-    if (outcome.bounced) selected = pos;
-    draw();
+    applySwap(selected, pos);
   };
 
-  app.renderer.on("resize", draw);
+  app.stage.on("pointerup", finishDrag);
+  app.stage.on("pointerupoutside", finishDrag);
+  app.renderer.on("resize", () => {
+    app.stage.hitArea = app.screen;
+    draw();
+  });
   draw();
 }
 

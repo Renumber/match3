@@ -12,6 +12,7 @@ Candy Crush × Vampire Survivors. Balatro처럼 계산하지 않는다.
 
 - [docs/mvp.md](docs/mvp.md) — 게임 설계. 잠긴 규칙과 미확정 항목.
 - [docs/web.md](docs/web.md) — 웹 테스트 구조, 엔진 분리, 구현 순서.
+- [docs/ship.md](docs/ship.md) — Amplify MVP → Steam / 앱스토어.
 
 ## 스택
 
