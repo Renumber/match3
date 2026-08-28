@@ -1,36 +1,58 @@
-import { BOMB_RADIUS, COLS, LIGHTNING_BASE_TARGETS, ROWS, inBounds, type Pos, type Special, type Tile } from "./types.ts";
+import { COLS, ROWS, inBounds, type Pos, type Special, type Tile } from "./types.ts";
 import { getTile } from "./board.ts";
 import { shuffleInPlace, type Rng } from "./rng.ts";
+import { defaultUpgradeStats, type UpgradeStats } from "./upgrades.ts";
+
+export function spreadIndices(origin: number, extra: number, max: number): number[] {
+  const indices = [origin];
+  let offset = 1;
+  while (indices.length < 1 + extra) {
+    const before = indices.length;
+    const hi = origin + offset;
+    const lo = origin - offset;
+    if (hi < max) indices.push(hi);
+    if (indices.length >= 1 + extra) break;
+    if (lo >= 0) indices.push(lo);
+    if (indices.length === before) break;
+    offset += 1;
+  }
+  return indices;
+}
 
 export function cellsForSpecial(
   special: Special,
   origin: Pos,
   board: (Tile | null)[][],
   rng: Rng,
+  stats: UpgradeStats = defaultUpgradeStats(),
 ): Pos[] {
-  if (special === "lineH") return lineRow(origin.r);
-  if (special === "lineV") return lineCol(origin.c);
-  if (special === "bomb") return bombCells(origin);
-  if (special === "lightning") return lightningTargets(board, origin, LIGHTNING_BASE_TARGETS, rng);
+  if (special === "lineH") return lineRows(spreadIndices(origin.r, stats.extraLines, ROWS));
+  if (special === "lineV") return lineCols(spreadIndices(origin.c, stats.extraLines, COLS));
+  if (special === "bomb") return bombCells(origin, stats.bombRadius);
+  if (special === "lightning") return lightningTargets(board, origin, stats.lightningTargets, rng);
   return [];
 }
 
-function lineRow(r: number): Pos[] {
+function lineRows(rows: number[]): Pos[] {
   const cells: Pos[] = [];
-  for (let c = 0; c < COLS; c++) cells.push({ r, c });
+  for (const r of rows) {
+    for (let c = 0; c < COLS; c++) cells.push({ r, c });
+  }
   return cells;
 }
 
-function lineCol(c: number): Pos[] {
+function lineCols(cols: number[]): Pos[] {
   const cells: Pos[] = [];
-  for (let r = 0; r < ROWS; r++) cells.push({ r, c });
+  for (const c of cols) {
+    for (let r = 0; r < ROWS; r++) cells.push({ r, c });
+  }
   return cells;
 }
 
-function bombCells(origin: Pos): Pos[] {
+function bombCells(origin: Pos, radius: number): Pos[] {
   const cells: Pos[] = [];
-  for (let r = origin.r - BOMB_RADIUS; r <= origin.r + BOMB_RADIUS; r++) {
-    for (let c = origin.c - BOMB_RADIUS; c <= origin.c + BOMB_RADIUS; c++) {
+  for (let r = origin.r - radius; r <= origin.r + radius; r++) {
+    for (let c = origin.c - radius; c <= origin.c + radius; c++) {
       const p = { r, c };
       if (inBounds(p)) cells.push(p);
     }
