@@ -14,17 +14,42 @@
   <body>
     <div id="app">
       <div id="hud">
-        <div class="stat">
-          <span>CHAIN</span>
-          <strong id="chain">0</strong>
+        <div class="hud-row">
+          <div class="stat">
+            <span>MOVES</span>
+            <strong id="moves">30</strong>
+          </div>
+          <div class="stat">
+            <span>LEVEL</span>
+            <strong id="level">1</strong>
+          </div>
+          <div class="stat">
+            <span>CHAIN</span>
+            <strong id="chain">0</strong>
+          </div>
+          <div class="stat">
+            <span>CLEARED</span>
+            <strong id="cleared">0</strong>
+          </div>
+          <p class="hint">스와이프하거나 인접 칸을 두 번 눌러 스왑</p>
         </div>
-        <div class="stat">
-          <span>CLEARED</span>
-          <strong id="cleared">0</strong>
+        <div class="xp-row">
+          <span>XP</span>
+          <div class="xp-bar" aria-hidden="true">
+            <i id="xp-fill"></i>
+          </div>
+          <strong id="xp-label">0/20</strong>
         </div>
-        <p class="hint">스와이프하거나 인접 칸을 두 번 눌러 스왑</p>
+        <div id="upgrades" class="upgrades"></div>
       </div>
       <div id="stage"></div>
+    </div>
+    <div id="levelup" class="hidden" aria-hidden="true">
+      <div class="levelup-panel">
+        <h2>LEVEL UP</h2>
+        <p>능력을 하나 고르세요</p>
+        <div id="levelup-cards" class="levelup-cards"></div>
+      </div>
     </div>
     <script type="module" src="/src/main.ts"></script>
   </body>

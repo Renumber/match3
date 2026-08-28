@@ -11,6 +11,7 @@ const GAP = 6;
 export type HudHooks = {
   setChain: (value: number) => void;
   setCleared: (value: number) => void;
+  onResolved?: () => void;
 };
 
 type Drag = {
@@ -262,8 +263,10 @@ export function mountBoard(app: Application, game: Game, hud: HudHooks): void {
     }
   };
 
+  const inputBlocked = () => busy || game.phase !== "idle";
+
   const applySwap = (a: Pos, b: Pos) => {
-    if (busy) return;
+    if (inputBlocked()) return;
     selected = null;
     drag = null;
     const outcome = game.trySwap(a, b);
@@ -278,12 +281,13 @@ export function mountBoard(app: Application, game: Game, hud: HudHooks): void {
       rebuild();
       hud.setChain(game.lastChain);
       hud.setCleared(game.totalCleared);
+      hud.onResolved?.();
       busy = false;
     });
   };
 
   const finishDrag = (e: FederatedPointerEvent) => {
-    if (busy || !drag) return;
+    if (inputBlocked() || !drag) return;
     const start = drag;
     drag = null;
     const dx = e.global.x - start.x;
@@ -301,7 +305,7 @@ export function mountBoard(app: Application, game: Game, hud: HudHooks): void {
   };
 
   const onTap = (pos: Pos) => {
-    if (busy) return;
+    if (inputBlocked()) return;
     if (!selected) {
       selected = pos;
       rebuild();
@@ -317,7 +321,7 @@ export function mountBoard(app: Application, game: Game, hud: HudHooks): void {
 
   tileLayer.eventMode = "static";
   tileLayer.on("pointerdown", (e: FederatedPointerEvent) => {
-    if (busy) return;
+    if (inputBlocked()) return;
     const pos = pickCell(e);
     if (!pos || !occupancy.has(posKey(pos))) return;
     drag = { pos, x: e.global.x, y: e.global.y };
