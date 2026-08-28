@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { LEVEL_UP_CARDS, LEVEL_UP_OFFER_COUNT } from "../data/levelUpCards.ts";
 import { Game } from "./game.ts";
-import { offerLevelUpCards } from "./levelUp.ts";
+import { offerLevelUpCards, offerWeight, tagAffinity } from "./levelUp.ts";
 import { mulberry32 } from "./rng.ts";
 
 describe("level-up offers", () => {
@@ -21,6 +21,24 @@ describe("level-up offers", () => {
     const cards = offerLevelUpCards(mulberry32(3), owned);
     expect(cards.every((card) => card.stackable)).toBe(true);
     expect(cards.some((card) => owned.includes(card.id))).toBe(false);
+  });
+
+  it("weighs later offers toward tags already picked", () => {
+    const owned = ["bombRadius", "bombRadius"];
+    const affinity = tagAffinity(owned);
+    const bomb = LEVEL_UP_CARDS.find((card) => card.id === "bombRadius");
+    const chain = LEVEL_UP_CARDS.find((card) => card.id === "chainMove");
+    expect(bomb && chain).toBeTruthy();
+    if (!bomb || !chain) return;
+    expect(offerWeight(bomb, affinity)).toBeGreaterThan(offerWeight(chain, affinity));
+
+    const counts = { bombRadius: 0, chainMove: 0 };
+    for (let seed = 0; seed < 240; seed++) {
+      const cards = offerLevelUpCards(mulberry32(seed), owned);
+      if (cards.some((card) => card.id === "bombRadius")) counts.bombRadius += 1;
+      if (cards.some((card) => card.id === "chainMove")) counts.chainMove += 1;
+    }
+    expect(counts.bombRadius).toBeGreaterThan(counts.chainMove);
   });
 });
 

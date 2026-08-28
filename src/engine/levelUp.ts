@@ -2,14 +2,43 @@ import {
   LEVEL_UP_CARDS,
   LEVEL_UP_OFFER_COUNT,
   type LevelUpCard,
+  type UpgradeTag,
 } from "../data/levelUpCards.ts";
-import { shuffleInPlace, type Rng } from "./rng.ts";
+import { takeWeighted, type Rng } from "./rng.ts";
+
+export const TAG_AFFINITY_BONUS = 2;
 
 export function cardById(
   id: string,
   pool: LevelUpCard[] = LEVEL_UP_CARDS,
 ): LevelUpCard | undefined {
   return pool.find((card) => card.id === id);
+}
+
+export function tagAffinity(
+  ownedIds: string[],
+  pool: LevelUpCard[] = LEVEL_UP_CARDS,
+): Map<UpgradeTag, number> {
+  const affinity = new Map<UpgradeTag, number>();
+  for (const id of ownedIds) {
+    const card = cardById(id, pool);
+    if (!card) continue;
+    for (const tag of card.tags) {
+      affinity.set(tag, (affinity.get(tag) ?? 0) + 1);
+    }
+  }
+  return affinity;
+}
+
+export function offerWeight(
+  card: LevelUpCard,
+  affinity: Map<UpgradeTag, number>,
+): number {
+  let weight = 1;
+  for (const tag of card.tags) {
+    weight += TAG_AFFINITY_BONUS * (affinity.get(tag) ?? 0);
+  }
+  return weight;
 }
 
 export function offerLevelUpCards(
@@ -25,9 +54,13 @@ export function offerLevelUpCards(
     }),
   );
   const available = pool.filter((card) => !takenUnique.has(card.id));
-  const shuffled = [...available];
-  shuffleInPlace(shuffled, rng);
-  return shuffled.slice(0, Math.min(count, shuffled.length));
+  const affinity = tagAffinity(ownedIds, pool);
+  return takeWeighted(
+    rng,
+    available,
+    Math.min(count, available.length),
+    (card) => offerWeight(card, affinity),
+  );
 }
 
 export function summarizeOwnedCards(

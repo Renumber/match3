@@ -1,7 +1,11 @@
 import { describe, expect, it } from "vitest";
-import { addXp, createRun, xpForNextLevel } from "./run.ts";
+import { addXp, createRun, STARTING_MOVES, xpForNextLevel } from "./run.ts";
 
 describe("run xp", () => {
+  it("starts with the raised move count", () => {
+    expect(createRun().moves).toBe(STARTING_MOVES);
+    expect(STARTING_MOVES).toBe(40);
+  });
   it("levels up when xp fills the bar", () => {
     const run = createRun();
     expect(run.level).toBe(1);

@@ -196,6 +196,48 @@ body {
   color: #a1a1aa;
 }
 
+.levelup-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-top: auto;
+}
+
+.levelup-tag {
+  font-size: 10px;
+  font-style: normal;
+  letter-spacing: 0.06em;
+  padding: 3px 7px;
+  border-radius: 999px;
+  background: #27272a;
+  color: #d4d4d8;
+}
+
+.levelup-tag[data-tag="line"] {
+  background: #1e3a5f;
+  color: #93c5fd;
+}
+
+.levelup-tag[data-tag="bomb"] {
+  background: #431407;
+  color: #fdba74;
+}
+
+.levelup-tag[data-tag="lightning"] {
+  background: #422006;
+  color: #fde047;
+}
+
+.levelup-tag[data-tag="special"] {
+  background: #2e1065;
+  color: #d8b4fe;
+}
+
+.levelup-tag[data-tag="chain"] {
+  background: #052e16;
+  color: #86efac;
+}
+
 @media (max-width: 520px) {
   .hint {
     max-width: 38vw;

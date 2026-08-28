@@ -1,4 +1,4 @@
-import type { LevelUpCard } from "../data/levelUpCards.ts";
+import { UPGRADE_TAG_LABEL, type LevelUpCard } from "../data/levelUpCards.ts";
 
 export type LevelUpUi = {
   show: (cards: LevelUpCard[]) => void;
@@ -30,7 +30,16 @@ export function mountLevelUp(onPick: (cardId: string) => void): LevelUpUi {
       title.textContent = card.title;
       const desc = document.createElement("span");
       desc.textContent = card.description;
-      button.append(title, desc);
+      const tags = document.createElement("div");
+      tags.className = "levelup-tags";
+      for (const tag of card.tags) {
+        const chip = document.createElement("em");
+        chip.className = "levelup-tag";
+        chip.dataset.tag = tag;
+        chip.textContent = UPGRADE_TAG_LABEL[tag];
+        tags.append(chip);
+      }
+      button.append(title, desc, tags);
       button.addEventListener("click", () => onPick(card.id));
       list.append(button);
     }

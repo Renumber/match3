@@ -11,7 +11,7 @@ import {
 import { getTile, makeTile, setTile } from "./board.ts";
 import { findMatches } from "./match.ts";
 import { settleBoard } from "./gravity.ts";
-import { cellsForSpecial, spreadIndices } from "./specials.ts";
+import { cellsForSpecial, specialFromThreeMatch, spreadIndices } from "./specials.ts";
 import type { GameEvent, ResolveResult } from "./events.ts";
 import type { Rng } from "./rng.ts";
 import { defaultUpgradeStats, type UpgradeStats } from "./upgrades.ts";
@@ -78,8 +78,7 @@ function spawnSpecialForMatch(
   const spawnSpecial = specialFromMatch(matchKind);
   if (spawnSpecial !== "none") return spawnSpecial;
   if (stats.specialSpawnChance <= 0 || rng() >= stats.specialSpawnChance) return "none";
-  const horizontal = cells.every((cell) => cell.r === origin.r);
-  return horizontal ? "lineH" : "lineV";
+  return specialFromThreeMatch(cells, origin, rng);
 }
 
 export function resolveBoard(
