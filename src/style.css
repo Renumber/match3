@@ -25,14 +25,20 @@ body {
 #hud {
   flex: 0 0 auto;
   display: flex;
-  flex-direction: row;
-  align-items: flex-end;
-  gap: 20px;
+  flex-direction: column;
+  gap: 8px;
   z-index: 2;
   padding: 10px 16px 8px;
   padding-top: max(10px, env(safe-area-inset-top));
   padding-left: max(16px, env(safe-area-inset-left));
   padding-right: max(16px, env(safe-area-inset-right));
+}
+
+.hud-row {
+  display: flex;
+  flex-direction: row;
+  align-items: flex-end;
+  gap: 20px;
 }
 
 .stat {
@@ -71,6 +77,125 @@ body {
   touch-action: none;
 }
 
+.xp-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.xp-row span {
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  color: #a1a1aa;
+}
+
+.xp-bar {
+  flex: 1 1 auto;
+  height: 8px;
+  border-radius: 999px;
+  background: #27272a;
+  overflow: hidden;
+}
+
+.xp-bar i {
+  display: block;
+  height: 100%;
+  width: 0;
+  background: #eab308;
+}
+
+.xp-row strong {
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+  color: #d4d4d8;
+  min-width: 4.5em;
+  text-align: right;
+}
+
+.upgrades {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  min-height: 0;
+}
+
+.upgrade-chip {
+  font-size: 11px;
+  line-height: 1;
+  padding: 6px 8px;
+  border-radius: 999px;
+  background: #27272a;
+  color: #e4e4e7;
+}
+
+#levelup {
+  position: fixed;
+  inset: 0;
+  z-index: 20;
+  display: grid;
+  place-items: center;
+  padding: 16px;
+  background: rgba(0, 0, 0, 0.72);
+  touch-action: manipulation;
+}
+
+#levelup.hidden {
+  display: none;
+}
+
+.levelup-panel {
+  width: min(720px, 100%);
+  text-align: center;
+}
+
+.levelup-panel h2 {
+  margin: 0 0 6px;
+  font-size: 28px;
+  letter-spacing: 0.08em;
+}
+
+.levelup-panel p {
+  margin: 0 0 18px;
+  color: #a1a1aa;
+}
+
+.levelup-cards {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.levelup-card {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-height: 132px;
+  padding: 16px 14px;
+  border: 1px solid #3f3f46;
+  border-radius: 14px;
+  background: #1f1f1f;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.levelup-card:hover,
+.levelup-card:focus-visible {
+  border-color: #f4f4f5;
+  outline: none;
+}
+
+.levelup-card strong {
+  font-size: 16px;
+}
+
+.levelup-card span {
+  font-size: 13px;
+  line-height: 1.4;
+  color: #a1a1aa;
+}
+
 @media (max-width: 520px) {
   .hint {
     max-width: 38vw;
@@ -79,5 +204,17 @@ body {
 
   .stat strong {
     font-size: 22px;
+  }
+
+  .hud-row {
+    gap: 14px;
+  }
+
+  .levelup-cards {
+    grid-template-columns: 1fr;
+  }
+
+  .levelup-card {
+    min-height: 0;
   }
 }
