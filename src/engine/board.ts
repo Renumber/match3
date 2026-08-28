@@ -7,6 +7,7 @@ import {
   type Tile,
 } from "./types.ts";
 import { pickInt, type Rng } from "./rng.ts";
+import type { DropIn } from "./events.ts";
 
 let nextId = 1;
 
@@ -85,13 +86,30 @@ export function randomColor(rng: Rng, board: (Tile | null)[][], p: Pos): ColorId
   return options[pickInt(rng, options.length)] as ColorId;
 }
 
-export function fillEmpty(board: (Tile | null)[][], rng: Rng): void {
+export function fillEmpty(board: (Tile | null)[][], rng: Rng): DropIn[] {
+  const placed: { tile: Tile; to: Pos }[] = [];
   for (let r = 0; r < ROWS; r++) {
     for (let c = 0; c < COLS; c++) {
       if (getTile(board, { r, c })) continue;
-      setTile(board, { r, c }, makeTile(randomColor(rng, board, { r, c })));
+      const tile = makeTile(randomColor(rng, board, { r, c }));
+      setTile(board, { r, c }, tile);
+      placed.push({ tile, to: { r, c } });
     }
   }
+  const byCol = new Map<number, { tile: Tile; to: Pos }[]>();
+  for (const item of placed) {
+    const list = byCol.get(item.to.c) ?? [];
+    list.push(item);
+    byCol.set(item.to.c, list);
+  }
+  const drops: DropIn[] = [];
+  for (const list of byCol.values()) {
+    list.sort((x, y) => x.to.r - y.to.r);
+    list.forEach((item, i) => {
+      drops.push({ tile: item.tile, to: item.to, fromR: -(list.length - i) });
+    });
+  }
+  return drops;
 }
 
 export function createFilledBoard(rng: Rng): (Tile | null)[][] {

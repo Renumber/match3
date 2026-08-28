@@ -1,11 +1,30 @@
-import type { Pos, Special } from "./types.ts";
+import type { Pos, Special, Tile } from "./types.ts";
+
+export type FallMove = {
+  id: number;
+  from: Pos;
+  to: Pos;
+};
+
+export type DropIn = {
+  tile: Tile;
+  to: Pos;
+  fromR: number;
+};
 
 export type GameEvent =
-  | { type: "clear"; cells: Pos[] }
-  | { type: "spawn"; at: Pos; special: Special }
+  | { type: "swap"; a: Pos; b: Pos }
+  | { type: "bounce"; a: Pos; b: Pos }
+  | { type: "chain"; value: number }
+  | { type: "highlight"; cells: Pos[] }
   | { type: "activate"; at: Pos; special: Special }
+  | { type: "fxLine"; dir: "h" | "v"; index: number }
+  | { type: "fxBomb"; at: Pos }
   | { type: "strike"; from: Pos; to: Pos }
-  | { type: "chain"; value: number };
+  | { type: "clear"; cells: Pos[] }
+  | { type: "spawn"; at: Pos; special: Special; tile: Tile }
+  | { type: "fall"; moves: FallMove[] }
+  | { type: "dropIn"; drops: DropIn[] };
 
 export type ResolveResult = {
   events: GameEvent[];

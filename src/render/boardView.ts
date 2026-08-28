@@ -1,6 +1,9 @@
-import { Application, Container, Graphics, type FederatedPointerEvent } from "pixi.js";
-import { COLS, ROWS, inBounds, type Pos, type Tile } from "../engine/types.ts";
+import { Application, Container, Graphics, Rectangle, type FederatedPointerEvent } from "pixi.js";
+import { COLS, ROWS, inBounds, posKey, type Pos, type Tile } from "../engine/types.ts";
+import type { GameEvent } from "../engine/events.ts";
 import { Game } from "../engine/game.ts";
+import { playBombFx, playLineFx, playStrikeFx, type Layout } from "./fx.ts";
+import { animate, easeOutBack } from "./tween.ts";
 
 const PALETTE = [0xef4444, 0x3b82f6, 0x22c55e, 0xeab308, 0xa855f7];
 const GAP = 6;
@@ -16,44 +19,271 @@ type Drag = {
   y: number;
 };
 
+type Occupant = {
+  g: Graphics;
+  tile: Tile;
+};
+
 export function mountBoard(app: Application, game: Game, hud: HudHooks): void {
-  const layer = new Container();
-  app.stage.addChild(layer);
+  const root = new Container();
+  const bgLayer = new Graphics();
+  const tileLayer = new Container();
+  const fxLayer = new Container();
+  root.addChild(bgLayer, tileLayer, fxLayer);
+  app.stage.addChild(root);
   app.stage.eventMode = "static";
   app.stage.hitArea = app.screen;
 
   let selected: Pos | null = null;
   let cellSize = 40;
   let drag: Drag | null = null;
+  let busy = false;
+  const occupancy = new Map<string, Occupant>();
+
+  const layoutOf = (): Layout => ({ cell: cellSize, gap: GAP });
+
+  const boardPixelSize = () => ({
+    w: cellSize * COLS + GAP * (COLS - 1),
+    h: cellSize * ROWS + GAP * (ROWS - 1),
+  });
+
+  const placeAt = (g: Graphics, r: number, c: number) => {
+    g.x = c * (cellSize + GAP) + cellSize / 2;
+    g.y = r * (cellSize + GAP) + cellSize / 2;
+  };
 
   const layout = () => {
     const padX = 16;
     const padY = 12;
     const availableW = app.screen.width - padX * 2;
     const availableH = app.screen.height - padY * 2;
-    const cell = Math.max(
+    cellSize = Math.max(
       28,
       Math.floor((Math.min(availableW, availableH) - GAP * (COLS - 1)) / COLS),
     );
-    cellSize = cell;
-    const boardW = cell * COLS + GAP * (COLS - 1);
-    const boardH = cell * ROWS + GAP * (ROWS - 1);
-    layer.x = Math.floor((app.screen.width - boardW) / 2);
-    layer.y = Math.floor((app.screen.height - boardH) / 2);
-    return cell;
+    const { w, h } = boardPixelSize();
+    root.x = Math.floor((app.screen.width - w) / 2);
+    root.y = Math.floor((app.screen.height - h) / 2);
+    tileLayer.hitArea = new Rectangle(0, 0, w, h);
+    return cellSize;
+  };
+
+  const drawBg = () => {
+    bgLayer.clear();
+    for (let r = 0; r < ROWS; r++) {
+      for (let c = 0; c < COLS; c++) {
+        const x = c * (cellSize + GAP);
+        const y = r * (cellSize + GAP);
+        bgLayer.roundRect(x, y, cellSize, cellSize, 10).fill(0x1f1f1f);
+      }
+    }
+  };
+
+  const makeSprite = (tile: Tile, isSelected: boolean): Graphics => {
+    const g = new Graphics();
+    drawTile(g, tile, cellSize, isSelected);
+    g.pivot.set(cellSize / 2, cellSize / 2);
+    return g;
+  };
+
+  const rebuild = () => {
+    for (const item of occupancy.values()) item.g.destroy();
+    occupancy.clear();
+    tileLayer.removeChildren();
+    for (const child of [...fxLayer.children]) child.destroy();
+    layout();
+    drawBg();
+    for (let r = 0; r < ROWS; r++) {
+      for (let c = 0; c < COLS; c++) {
+        const tile = game.board[r]?.[c] ?? null;
+        if (!tile) continue;
+        const g = makeSprite(tile, selected?.r === r && selected?.c === c);
+        placeAt(g, r, c);
+        tileLayer.addChild(g);
+        occupancy.set(posKey({ r, c }), { g, tile });
+      }
+    }
+  };
+
+  const pickCell = (e: FederatedPointerEvent): Pos | null => {
+    const local = e.getLocalPosition(root);
+    const c = Math.floor(local.x / (cellSize + GAP));
+    const r = Math.floor(local.y / (cellSize + GAP));
+    const pos = { r, c };
+    return inBounds(pos) ? pos : null;
+  };
+
+  const animSwap = async (a: Pos, b: Pos) => {
+    const A = occupancy.get(posKey(a));
+    const B = occupancy.get(posKey(b));
+    if (!A || !B) return;
+    occupancy.set(posKey(a), B);
+    occupancy.set(posKey(b), A);
+    const ax = A.g.x;
+    const ay = A.g.y;
+    const bx = B.g.x;
+    const by = B.g.y;
+    await animate(app, 120, (t) => {
+      A.g.x = ax + (bx - ax) * t;
+      A.g.y = ay + (by - ay) * t;
+      B.g.x = bx + (ax - bx) * t;
+      B.g.y = by + (ay - by) * t;
+    });
+  };
+
+  const playEvents = async (events: GameEvent[], clearedTotal: number) => {
+    let shownCleared = game.totalCleared - clearedTotal;
+    hud.setCleared(shownCleared);
+    let i = 0;
+    while (i < events.length) {
+      const event = events[i];
+      if (!event) break;
+      switch (event.type) {
+        case "swap":
+          await animSwap(event.a, event.b);
+          break;
+        case "bounce":
+          await animSwap(event.a, event.b);
+          await animSwap(event.a, event.b);
+          break;
+        case "chain":
+          hud.setChain(event.value);
+          break;
+        case "highlight": {
+          const items = event.cells
+            .map((p) => occupancy.get(posKey(p)))
+            .filter((item): item is Occupant => Boolean(item));
+          await animate(app, 110, (t) => {
+            const s = 1 + 0.1 * Math.sin(t * Math.PI);
+            for (const item of items) item.g.scale.set(s);
+          });
+          for (const item of items) item.g.scale.set(1);
+          break;
+        }
+        case "fxLine":
+          await playLineFx(app, fxLayer, layoutOf(), event.dir, event.index);
+          break;
+        case "fxBomb":
+          await playBombFx(app, fxLayer, layoutOf(), event.at);
+          break;
+        case "strike": {
+          const strikes = [event];
+          while (events[i + 1]?.type === "strike") {
+            i += 1;
+            const next = events[i];
+            if (next?.type === "strike") strikes.push(next);
+          }
+          await Promise.all(
+            strikes.map((strike) =>
+              playStrikeFx(app, fxLayer, layoutOf(), strike.from, strike.to),
+            ),
+          );
+          break;
+        }
+        case "activate":
+          break;
+        case "clear": {
+          const items = event.cells
+            .map((p) => occupancy.get(posKey(p)))
+            .filter((item): item is Occupant => Boolean(item));
+          await animate(app, 140, (t) => {
+            for (const item of items) {
+              item.g.scale.set(1 - t);
+              item.g.alpha = 1 - t;
+            }
+          });
+          for (const cell of event.cells) {
+            const item = occupancy.get(posKey(cell));
+            if (!item) continue;
+            occupancy.delete(posKey(cell));
+            item.g.destroy();
+          }
+          shownCleared += event.cells.length;
+          hud.setCleared(shownCleared);
+          break;
+        }
+        case "spawn": {
+          const g = makeSprite(event.tile, false);
+          placeAt(g, event.at.r, event.at.c);
+          g.scale.set(0);
+          tileLayer.addChild(g);
+          occupancy.set(posKey(event.at), { g, tile: event.tile });
+          await animate(app, 160, (t) => g.scale.set(t), easeOutBack);
+          g.scale.set(1);
+          break;
+        }
+        case "fall": {
+          const jobs = event.moves.map((move) => ({
+            item: occupancy.get(posKey(move.from)),
+            from: move.from,
+            to: move.to,
+          }));
+          for (const job of jobs) occupancy.delete(posKey(job.from));
+          for (const job of jobs) {
+            if (job.item) occupancy.set(posKey(job.to), job.item);
+          }
+          await animate(app, 200, (t) => {
+            for (const job of jobs) {
+              if (!job.item) continue;
+              const x0 = job.from.c * (cellSize + GAP) + cellSize / 2;
+              const y0 = job.from.r * (cellSize + GAP) + cellSize / 2;
+              const x1 = job.to.c * (cellSize + GAP) + cellSize / 2;
+              const y1 = job.to.r * (cellSize + GAP) + cellSize / 2;
+              job.item.g.x = x0 + (x1 - x0) * t;
+              job.item.g.y = y0 + (y1 - y0) * t;
+            }
+          });
+          break;
+        }
+        case "dropIn": {
+          const jobs = event.drops.map((drop) => {
+            const g = makeSprite(drop.tile, false);
+            g.x = drop.to.c * (cellSize + GAP) + cellSize / 2;
+            g.y = drop.fromR * (cellSize + GAP) + cellSize / 2;
+            tileLayer.addChild(g);
+            occupancy.set(posKey(drop.to), { g, tile: drop.tile });
+            return {
+              g,
+              y0: g.y,
+              y1: drop.to.r * (cellSize + GAP) + cellSize / 2,
+            };
+          });
+          await animate(app, 220, (t) => {
+            for (const job of jobs) {
+              job.g.y = job.y0 + (job.y1 - job.y0) * t;
+            }
+          });
+          break;
+        }
+        default:
+          break;
+      }
+      i += 1;
+    }
   };
 
   const applySwap = (a: Pos, b: Pos) => {
+    if (busy) return;
     selected = null;
+    drag = null;
     const outcome = game.trySwap(a, b);
-    hud.setChain(game.lastChain);
-    hud.setCleared(game.totalCleared);
-    if (outcome.bounced) selected = a;
-    draw();
+    const result = outcome.result;
+    if (!result) {
+      rebuild();
+      return;
+    }
+    busy = true;
+    void playEvents(result.events, result.cleared).finally(() => {
+      selected = null;
+      rebuild();
+      hud.setChain(game.lastChain);
+      hud.setCleared(game.totalCleared);
+      busy = false;
+    });
   };
 
   const finishDrag = (e: FederatedPointerEvent) => {
-    if (!drag) return;
+    if (busy || !drag) return;
     const start = drag;
     drag = null;
     const dx = e.global.x - start.x;
@@ -65,54 +295,41 @@ export function mountBoard(app: Application, game: Game, hud: HudHooks): void {
           ? { r: start.pos.r, c: start.pos.c + (dx > 0 ? 1 : -1) }
           : { r: start.pos.r + (dy > 0 ? 1 : -1), c: start.pos.c };
       if (inBounds(b)) applySwap(start.pos, b);
-      else draw();
       return;
     }
     onTap(start.pos);
   };
 
-  const draw = () => {
-    layer.removeChildren();
-    const cell = layout();
-
-    for (let r = 0; r < ROWS; r++) {
-      for (let c = 0; c < COLS; c++) {
-        const tile = game.board[r]?.[c] ?? null;
-        const g = new Graphics();
-        g.x = c * (cell + GAP);
-        g.y = r * (cell + GAP);
-        drawTile(g, tile, cell, selected?.r === r && selected?.c === c);
-        g.eventMode = "static";
-        g.cursor = "pointer";
-        g.on("pointerdown", (e: FederatedPointerEvent) => {
-          drag = { pos: { r, c }, x: e.global.x, y: e.global.y };
-        });
-        layer.addChild(g);
-      }
-    }
-  };
-
   const onTap = (pos: Pos) => {
+    if (busy) return;
     if (!selected) {
       selected = pos;
-      draw();
+      rebuild();
       return;
     }
     if (selected.r === pos.r && selected.c === pos.c) {
       selected = null;
-      draw();
+      rebuild();
       return;
     }
     applySwap(selected, pos);
   };
 
+  tileLayer.eventMode = "static";
+  tileLayer.on("pointerdown", (e: FederatedPointerEvent) => {
+    if (busy) return;
+    const pos = pickCell(e);
+    if (!pos || !occupancy.has(posKey(pos))) return;
+    drag = { pos, x: e.global.x, y: e.global.y };
+  });
+
   app.stage.on("pointerup", finishDrag);
   app.stage.on("pointerupoutside", finishDrag);
   app.renderer.on("resize", () => {
     app.stage.hitArea = app.screen;
-    draw();
+    if (!busy) rebuild();
   });
-  draw();
+  rebuild();
 }
 
 function drawTile(g: Graphics, tile: Tile | null, size: number, selected: boolean): void {

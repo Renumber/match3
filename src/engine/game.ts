@@ -40,12 +40,21 @@ export class Game {
     swapTiles(this.board, a, b);
     if (!hasMatch(this.board)) {
       swapTiles(this.board, a, b);
-      return { bounced: true, result: null };
+      return {
+        bounced: true,
+        result: { events: [{ type: "bounce", a, b }], cleared: 0, chain: 0 },
+      };
     }
 
     const result = resolveBoard(this.board, this.rng, b);
     this.lastChain = result.chain;
     this.totalCleared += result.cleared;
-    return { bounced: false, result };
+    return {
+      bounced: false,
+      result: {
+        ...result,
+        events: [{ type: "swap", a, b }, ...result.events],
+      },
+    };
   }
 }

@@ -36,6 +36,7 @@ export function resolveBoard(
     const clearSet = new Set<string>();
     const spawns: { at: Pos; special: Special; color: number }[] = [];
     const activateQueue: { at: Pos; special: Special }[] = [];
+    const fxEvents: GameEvent[] = [];
 
     for (const match of matches) {
       const spawnSpecial = specialFromMatch(match.kind);
@@ -60,11 +61,14 @@ export function resolveBoard(
       const ak = `${posKey(next.at)}:${next.special}`;
       if (seenActivate.has(ak)) continue;
       seenActivate.add(ak);
-      events.push({ type: "activate", at: next.at, special: next.special });
+      fxEvents.push({ type: "activate", at: next.at, special: next.special });
+      if (next.special === "lineH") fxEvents.push({ type: "fxLine", dir: "h", index: next.at.r });
+      if (next.special === "lineV") fxEvents.push({ type: "fxLine", dir: "v", index: next.at.c });
+      if (next.special === "bomb") fxEvents.push({ type: "fxBomb", at: next.at });
       const struck = cellsForSpecial(next.special, next.at, board, rng);
       for (const cell of struck) {
         if (next.special === "lightning") {
-          events.push({ type: "strike", from: next.at, to: cell });
+          fxEvents.push({ type: "strike", from: next.at, to: cell });
         }
         const tile = getTile(board, cell);
         if (tile && tile.special !== "none" && posKey(cell) !== posKey(next.at)) {
@@ -74,6 +78,9 @@ export function resolveBoard(
       }
     }
 
+    events.push({ type: "highlight", cells: [...toClear] });
+    events.push(...fxEvents);
+
     for (const cell of toClear) setTile(board, cell, null);
     if (toClear.length) {
       events.push({ type: "clear", cells: [...toClear] });
@@ -81,11 +88,14 @@ export function resolveBoard(
     }
 
     for (const spawn of spawns) {
-      setTile(board, spawn.at, makeTile(spawn.color, spawn.special));
-      events.push({ type: "spawn", at: spawn.at, special: spawn.special });
+      const tile = makeTile(spawn.color, spawn.special);
+      setTile(board, spawn.at, tile);
+      events.push({ type: "spawn", at: spawn.at, special: spawn.special, tile });
     }
 
-    settleBoard(board, rng);
+    const { falls, drops } = settleBoard(board, rng);
+    if (falls.length) events.push({ type: "fall", moves: falls });
+    if (drops.length) events.push({ type: "dropIn", drops });
   }
 
   return { events, cleared, chain };
