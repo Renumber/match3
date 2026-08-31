@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { boardFromColors, getTile, resetTileIds } from "./board.ts";
+import { boardFromColors, getTile, makeTile, resetTileIds, setTile } from "./board.ts";
 import { mulberry32 } from "./rng.ts";
 import { resolveBoard } from "./resolve.ts";
 import { COLS, ROWS, type Tile } from "./types.ts";
@@ -101,6 +101,86 @@ describe("resolveBoard", () => {
       true,
     );
   });
+
+  it("spawns a small leftover bomb that stays on the board", () => {
+    const board = grid([
+      "00011111",
+      "11111111",
+      "11111111",
+      "11111111",
+      "11111111",
+      "11111111",
+      "11111111",
+      "11111111",
+    ]);
+    setTile(board, { r: 0, c: 1 }, makeTile(0, "bomb"));
+    const stats = defaultUpgradeStats();
+    stats.bombEcho = 1;
+    stats.bombCross = true;
+    const result = resolveBoard(board, mulberry32(1), { r: 0, c: 2 }, stats);
+    const bombActivates = result.events.filter((e) => e.type === "activate" && e.special === "bomb");
+    expect(result.events.some((e) => e.type === "spawn" && e.special === "bomb")).toBe(true);
+    expect(bombActivates.length).toBe(1);
+    expect(specialsOn(board).some((item) => item.startsWith("bomb@"))).toBe(true);
+    expect(result.events.some((e) => e.type === "fxLine" && e.dir === "h" && e.index === 0)).toBe(
+      true,
+    );
+    expect(leftoverPlain(board, "bomb")).toBe(true);
+  });
+
+  it("lets leftover bombs land before auto-detonate", () => {
+    const board = grid([
+      "00043210",
+      "12340123",
+      "23401234",
+      "34012340",
+      "40123401",
+      "01234012",
+      "12340123",
+      "23401234",
+    ]);
+    setTile(board, { r: 0, c: 1 }, makeTile(0, "bomb"));
+    const stats = defaultUpgradeStats();
+    stats.bombEcho = 1;
+    stats.autoDetonate = true;
+    const result = resolveBoard(board, mulberry32(1), { r: 0, c: 2 }, stats);
+    const leftoverSpawn = result.events.findIndex(
+      (e) => e.type === "spawn" && e.special === "bomb" && e.tile.plain,
+    );
+    const settleIdx = result.events.findIndex(
+      (e, i) => i > leftoverSpawn && (e.type === "fall" || e.type === "dropIn"),
+    );
+    const leftoverActivate = result.events.findIndex(
+      (e, i) => i > leftoverSpawn && e.type === "activate" && e.special === "bomb",
+    );
+    expect(leftoverSpawn).toBeGreaterThan(-1);
+    expect(settleIdx).toBeGreaterThan(leftoverSpawn);
+    expect(leftoverActivate).toBeGreaterThan(settleIdx);
+  });
+
+  it("lets lightning leave another lightning on the board", () => {
+    const board = grid([
+      "000.....",
+      "........",
+      "1.2.3.4.",
+      "........",
+      ".1.2.3.4",
+      "........",
+      "........",
+      "........",
+    ]);
+    setTile(board, { r: 0, c: 1 }, makeTile(0, "lightning"));
+    const stats = defaultUpgradeStats();
+    stats.lightningEcho = 1;
+    const result = resolveBoard(board, mulberry32(1), { r: 0, c: 2 }, stats);
+    const lightningActivates = result.events.filter(
+      (e) => e.type === "activate" && e.special === "lightning",
+    );
+    expect(lightningActivates.length).toBe(1);
+    expect(result.events.some((e) => e.type === "spawn" && e.special === "lightning")).toBe(true);
+    expect(specialsOn(board).some((item) => item.startsWith("lightning@"))).toBe(true);
+    expect(leftoverPlain(board, "lightning")).toBe(true);
+  });
 });
 
 function specialsOn(board: (Tile | null)[][]) {
@@ -112,4 +192,14 @@ function specialsOn(board: (Tile | null)[][]) {
     }
   }
   return found;
+}
+
+function leftoverPlain(board: (Tile | null)[][], special: Tile["special"]): boolean {
+  for (let r = 0; r < ROWS; r++) {
+    for (let c = 0; c < COLS; c++) {
+      const tile = getTile(board, { r, c });
+      if (tile && tile.special === special && tile.plain) return true;
+    }
+  }
+  return false;
 }

@@ -1,5 +1,12 @@
 import { describe, expect, it } from "vitest";
-import { extraMovesAfterResolve, extraMovesOnLevel, UPGRADE_RULES } from "./upgradeRules.ts";
+import { emptyBoard } from "./board.ts";
+import { mulberry32 } from "./rng.ts";
+import {
+  collectEchoBursts,
+  extraMovesAfterResolve,
+  extraMovesOnLevel,
+  UPGRADE_RULES,
+} from "./upgradeRules.ts";
 import { defaultUpgradeStats } from "./upgradeStats.ts";
 
 describe("upgrade rule registry", () => {
@@ -27,5 +34,43 @@ describe("upgrade rule registry", () => {
     stats.movesOnLevel = 2;
     expect(extraMovesOnLevel(3, stats)).toBe(6);
     expect(extraMovesOnLevel(0, stats)).toBe(0);
+  });
+
+  it("plants leftover bombs on crater corners", () => {
+    const stats = defaultUpgradeStats();
+    stats.bombEcho = 2;
+    const bursts = collectEchoBursts({
+      special: "bomb",
+      origin: { r: 3, c: 3 },
+      board: emptyBoard(),
+      rng: mulberry32(1),
+      stats,
+      struck: [],
+    });
+    expect(bursts).toHaveLength(2);
+    expect(bursts.every((burst) => burst.special === "bomb")).toBe(true);
+    expect(
+      bursts.every((burst) => Math.abs(burst.at.r - 3) === 1 && Math.abs(burst.at.c - 3) === 1),
+    ).toBe(true);
+  });
+
+  it("plants leftover lightning on struck cells", () => {
+    const stats = defaultUpgradeStats();
+    stats.lightningEcho = 1;
+    stats.lightningSeedBomb = true;
+    const bursts = collectEchoBursts({
+      special: "lightning",
+      origin: { r: 0, c: 0 },
+      board: emptyBoard(),
+      rng: mulberry32(1),
+      stats,
+      struck: [
+        { r: 0, c: 0 },
+        { r: 2, c: 3 },
+        { r: 4, c: 5 },
+      ],
+    });
+    expect(bursts.some((burst) => burst.special === "lightning" && burst.at.r === 2)).toBe(true);
+    expect(bursts.some((burst) => burst.special === "bomb" && burst.at.r === 2)).toBe(true);
   });
 });

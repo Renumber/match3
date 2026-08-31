@@ -10,8 +10,10 @@ describe("applyUpgradeEffect", () => {
   });
   it("stacks numeric bonuses", () => {
     const stats = defaultUpgradeStats();
-    applyUpgradeEffect(stats, { bombRadius: 1, extraLines: 1, lightningTargets: 2 });
+    applyUpgradeEffect(stats, { extraLines: 1, lightningTargets: 2 });
     applyUpgradeEffect(stats, { bombRadius: 1, specialSpawnChance: 0.25 });
+    expect(stats.bombRadius).toBe(2);
+    applyUpgradeEffect(stats, { bombRadius: 1 });
     expect(stats.bombRadius).toBe(3);
     expect(stats.extraLines).toBe(1);
     expect(stats.lightningTargets).toBe(4);
@@ -41,6 +43,16 @@ describe("applyUpgradeEffect", () => {
     applyUpgradeEffect(stats, { crossLine: true, bombCross: true });
     expect(stats.crossLine).toBe(true);
     expect(stats.bombCross).toBe(true);
+  });
+
+  it("caps leftover special counts", () => {
+    const stats = defaultUpgradeStats();
+    applyUpgradeEffect(stats, { bombEcho: 1, lightningEcho: 1 });
+    applyUpgradeEffect(stats, { bombEcho: 1, lightningEcho: 1 });
+    applyUpgradeEffect(stats, { bombEcho: 4, lightningSeedBomb: true });
+    expect(stats.bombEcho).toBe(4);
+    expect(stats.lightningEcho).toBe(2);
+    expect(stats.lightningSeedBomb).toBe(true);
   });
 
   it("scales xp from clears", () => {

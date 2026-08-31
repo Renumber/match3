@@ -5,6 +5,7 @@ import {
   type UpgradeTag,
 } from "../data/levelUpCards.ts";
 import { takeWeighted, type Rng } from "./rng.ts";
+import { UPGRADE_STAT_DEFS, type UpgradeStatKey, type UpgradeStats } from "./upgradeStats.ts";
 
 export const TAG_AFFINITY_BONUS = 1;
 export const TAG_AFFINITY_CAP = 2;
@@ -42,19 +43,33 @@ export function offerWeight(
   return 1 + TAG_AFFINITY_BONUS * Math.min(TAG_AFFINITY_CAP, matched);
 }
 
+export function isCardSpent(
+  card: LevelUpCard,
+  ownedIds: string[],
+  stats?: UpgradeStats,
+): boolean {
+  if (!card.stackable && ownedIds.includes(card.id)) return true;
+  if (!stats) return false;
+  const keys = Object.keys(card.effect) as UpgradeStatKey[];
+  if (keys.length === 0) return false;
+  return keys.every((key) => {
+    const def = UPGRADE_STAT_DEFS[key];
+    const incoming = card.effect[key];
+    if (incoming === undefined) return true;
+    if (def.merge === "cap") return (stats[key] as number) >= def.cap;
+    if (def.merge === "or") return Boolean(stats[key]);
+    return false;
+  });
+}
+
 export function offerLevelUpCards(
   rng: Rng,
   ownedIds: string[],
   pool: LevelUpCard[] = LEVEL_UP_CARDS,
   count: number = LEVEL_UP_OFFER_COUNT,
+  stats?: UpgradeStats,
 ): LevelUpCard[] {
-  const takenUnique = new Set(
-    ownedIds.filter((id) => {
-      const card = cardById(id, pool);
-      return Boolean(card && !card.stackable);
-    }),
-  );
-  const available = pool.filter((card) => !takenUnique.has(card.id));
+  const available = pool.filter((card) => !isCardSpent(card, ownedIds, stats));
   const affinity = tagAffinity(ownedIds, pool);
   return takeWeighted(
     rng,

@@ -7,7 +7,7 @@ type CapDef = { merge: "cap"; default: number; cap: number };
 type StatDef = AddDef | SetDef | OrDef | CapDef;
 
 export const UPGRADE_STAT_DEFS = {
-  bombRadius: { merge: "add", default: BOMB_RADIUS },
+  bombRadius: { merge: "cap", default: BOMB_RADIUS, cap: 3 },
   extraLines: { merge: "add", default: 0 },
   lightningTargets: { merge: "add", default: LIGHTNING_BASE_TARGETS },
   specialSpawnChance: { merge: "cap", default: 0, cap: 1 },
@@ -16,6 +16,9 @@ export const UPGRADE_STAT_DEFS = {
   chainMoveBonus: { merge: "add", default: 0 },
   crossLine: { merge: "or", default: false },
   bombCross: { merge: "or", default: false },
+  bombEcho: { merge: "cap", default: 0, cap: 4 },
+  lightningEcho: { merge: "cap", default: 0, cap: 2 },
+  lightningSeedBomb: { merge: "or", default: false },
   moveOnSpecial: { merge: "add", default: 0 },
   movesOnLevel: { merge: "add", default: 0 },
   xpBonus: { merge: "cap", default: 0, cap: 1 },

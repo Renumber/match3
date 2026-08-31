@@ -64,6 +64,16 @@ export function bombCells(origin: Pos, radius: number): Pos[] {
   return cells;
 }
 
+export function squareCorners(origin: Pos, radius: number): Pos[] {
+  const r = Math.max(1, radius);
+  return uniquePos([
+    { r: origin.r - r, c: origin.c - r },
+    { r: origin.r - r, c: origin.c + r },
+    { r: origin.r + r, c: origin.c - r },
+    { r: origin.r + r, c: origin.c + r },
+  ]).filter(inBounds);
+}
+
 export function lightningTargets(
   board: (Tile | null)[][],
   origin: Pos,

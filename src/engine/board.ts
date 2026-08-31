@@ -15,10 +15,14 @@ export function resetTileIds(start = 1): void {
   nextId = start;
 }
 
-export function makeTile(color: ColorId, special: Tile["special"] = "none"): Tile {
+export function makeTile(
+  color: ColorId,
+  special: Tile["special"] = "none",
+  plain = false,
+): Tile {
   const id = nextId;
   nextId += 1;
-  return { id, color, special };
+  return plain ? { id, color, special, plain: true } : { id, color, special };
 }
 
 export function emptyBoard(): (Tile | null)[][] {

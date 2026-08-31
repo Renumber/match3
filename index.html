@@ -31,7 +31,13 @@
             <span>CLEARED</span>
             <strong id="cleared">0</strong>
           </div>
-          <p class="hint">스와이프하거나 인접 칸을 두 번 눌러 스왑</p>
+          <div class="hud-end">
+            <p class="hint">스와이프하거나 인접 칸을 두 번 눌러 스왑</p>
+            <div class="hud-actions">
+              <button type="button" id="codex-open">도감</button>
+              <button type="button" id="codex-stats">상태</button>
+            </div>
+          </div>
         </div>
         <div class="xp-row">
           <span>XP</span>
@@ -49,6 +55,20 @@
         <h2>LEVEL UP</h2>
         <p>능력을 하나 고르세요</p>
         <div id="levelup-cards" class="levelup-cards"></div>
+      </div>
+    </div>
+    <div id="codex" class="hidden" aria-hidden="true">
+      <div class="codex-panel" role="dialog" aria-labelledby="codex-title">
+        <div class="codex-top">
+          <h2 id="codex-title">도감</h2>
+          <div class="codex-tabs">
+            <button type="button" data-codex-tab="cards" class="active">카드</button>
+            <button type="button" data-codex-tab="run">상태</button>
+          </div>
+          <button type="button" id="codex-close">닫기</button>
+        </div>
+        <div id="codex-cards" class="codex-cards"></div>
+        <div id="codex-run" class="codex-run hidden"></div>
       </div>
     </div>
     <script type="module" src="/src/main.ts"></script>

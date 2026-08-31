@@ -346,7 +346,8 @@ function drawTile(g: Graphics, tile: Tile | null, size: number, selected: boolea
   if (!tile || tile.special === "none") return;
   const cx = size / 2;
   const cy = size / 2;
-  g.circle(cx, cy, size * 0.16).fill(0xffffff);
+  const mark = tile.plain ? 0.11 : 0.16;
+  g.circle(cx, cy, size * mark).fill(0xffffff);
   if (tile.special === "lineH") {
     g.rect(size * 0.18, cy - 2, size * 0.64, 4).fill(0x111111);
   } else if (tile.special === "lineV") {

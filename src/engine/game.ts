@@ -129,7 +129,7 @@ export class Game {
     }
     this.phase = "levelUp";
     if (this.offeredCards.length === 0) {
-      this.offeredCards = offerLevelUpCards(this.rng, this.ownedCardIds);
+      this.offeredCards = offerLevelUpCards(this.rng, this.ownedCardIds, undefined, undefined, this.upgrades);
     }
   }
 }

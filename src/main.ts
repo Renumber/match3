@@ -3,6 +3,7 @@ import { Application } from "pixi.js";
 import { Game } from "./engine/game.ts";
 import { summarizeOwnedCards } from "./engine/levelUp.ts";
 import { mountBoard } from "./render/boardView.ts";
+import { mountCodex } from "./ui/codex.ts";
 import { mountHud } from "./ui/hud.ts";
 import { mountLevelUp } from "./ui/levelUp.ts";
 
@@ -23,6 +24,10 @@ async function boot(): Promise<void> {
 
   const game = new Game(2026);
   const hud = mountHud();
+  mountCodex({
+    ownedIds: () => game.ownedCardIds,
+    stats: () => game.upgrades,
+  });
 
   const refreshHud = () => {
     hud.setChain(game.lastChain);

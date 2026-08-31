@@ -3,6 +3,7 @@ import {
   type Pos,
   type Special,
   type Tile,
+  inBounds,
   posKey,
   specialFromMatch,
 } from "./types.ts";
@@ -12,10 +13,23 @@ import { settleBoard } from "./gravity.ts";
 import { cellsForSpecial, specialActivateFx } from "./specials.ts";
 import type { GameEvent, ResolveResult } from "./events.ts";
 import type { Rng } from "./rng.ts";
-import { shouldAutoDetonate, spawnFromThreeMatch } from "./upgradeRules.ts";
+import { collectEchoBursts, shouldAutoDetonate, spawnFromThreeMatch } from "./upgradeRules.ts";
 import { defaultUpgradeStats, type UpgradeStats } from "./upgradeStats.ts";
 
 const MAX_STEPS = 80;
+const MAX_ACTIVATES = 80;
+
+type ActivateJob = {
+  at: Pos;
+  special: Special;
+  plain?: boolean;
+};
+
+type EchoJob = {
+  at: Pos;
+  special: Special;
+  color: number;
+};
 
 function addCell(set: Set<string>, cells: Pos[], p: Pos): void {
   const k = posKey(p);
@@ -27,35 +41,95 @@ function addCell(set: Set<string>, cells: Pos[], p: Pos): void {
 function activateSpecials(
   board: (Tile | null)[][],
   rng: Rng,
-  queue: { at: Pos; special: Special }[],
+  queue: ActivateJob[],
   clearSet: Set<string>,
   toClear: Pos[],
   stats: UpgradeStats,
-): GameEvent[] {
+): { fxEvents: GameEvent[]; echoes: EchoJob[] } {
   const fxEvents: GameEvent[] = [];
+  const echoes: EchoJob[] = [];
   const seenActivate = new Set<string>();
-  while (queue.length) {
+  let steps = 0;
+  while (queue.length && steps < MAX_ACTIVATES) {
+    steps += 1;
     const next = queue.shift();
     if (!next) break;
-    const ak = `${posKey(next.at)}:${next.special}`;
+    const ak = `${posKey(next.at)}:${next.special}:${next.plain ? "p" : "u"}`;
     if (seenActivate.has(ak)) continue;
     seenActivate.add(ak);
+    const applyStats = next.plain ? defaultUpgradeStats() : stats;
     fxEvents.push({ type: "activate", at: next.at, special: next.special });
     addCell(clearSet, toClear, next.at);
-    fxEvents.push(...specialActivateFx(next.special, next.at, stats));
-    const struck = cellsForSpecial(next.special, next.at, board, rng, stats);
+    fxEvents.push(...specialActivateFx(next.special, next.at, applyStats));
+    const struck = cellsForSpecial(next.special, next.at, board, rng, applyStats);
     for (const cell of struck) {
       if (next.special === "lightning") {
         fxEvents.push({ type: "strike", from: next.at, to: cell });
       }
       const tile = getTile(board, cell);
       if (tile && tile.special !== "none" && posKey(cell) !== posKey(next.at)) {
-        queue.push({ at: cell, special: tile.special });
+        queue.push({ at: cell, special: tile.special, plain: Boolean(tile.plain) });
       }
       addCell(clearSet, toClear, cell);
     }
+    if (!next.plain) {
+      const color = getTile(board, next.at)?.color ?? 0;
+      for (const burst of collectEchoBursts({
+        special: next.special,
+        origin: next.at,
+        board,
+        rng,
+        stats,
+        struck,
+      })) {
+        echoes.push({ ...burst, color });
+      }
+    }
   }
-  return fxEvents;
+  return { fxEvents, echoes };
+}
+
+function plantEchoes(
+  board: (Tile | null)[][],
+  pending: EchoJob[],
+): { events: GameEvent[]; ids: Set<number> } {
+  const events: GameEvent[] = [];
+  const ids = new Set<number>();
+  for (const echo of pending) {
+    if (!inBounds(echo.at) || getTile(board, echo.at)) continue;
+    const tile = makeTile(echo.color, echo.special, true);
+    setTile(board, echo.at, tile);
+    events.push({ type: "spawn", at: echo.at, special: echo.special, tile });
+    ids.add(tile.id);
+  }
+  return { events, ids };
+}
+
+function jobsForTileIds(board: (Tile | null)[][], ids: Set<number>): ActivateJob[] {
+  const jobs: ActivateJob[] = [];
+  if (ids.size === 0) return jobs;
+  for (let r = 0; r < board.length; r++) {
+    const row = board[r];
+    if (!row) continue;
+    for (let c = 0; c < row.length; c++) {
+      const tile = row[c];
+      if (!tile || tile.special === "none" || !ids.has(tile.id)) continue;
+      jobs.push({ at: { r, c }, special: tile.special, plain: Boolean(tile.plain) });
+    }
+  }
+  return jobs;
+}
+
+function clearActivated(
+  board: (Tile | null)[][],
+  toClear: Pos[],
+): { events: GameEvent[]; cleared: number } {
+  const events: GameEvent[] = [];
+  const newlyCleared = toClear.filter((cell) => getTile(board, cell));
+  if (newlyCleared.length) events.push({ type: "highlight", cells: newlyCleared });
+  for (const cell of newlyCleared) setTile(board, cell, null);
+  if (newlyCleared.length) events.push({ type: "clear", cells: newlyCleared });
+  return { events, cleared: newlyCleared.length };
 }
 
 function spawnSpecialForMatch(
@@ -91,7 +165,7 @@ export function resolveBoard(
     const toClear: Pos[] = [];
     const clearSet = new Set<string>();
     const spawns: { at: Pos; special: Special; color: number }[] = [];
-    const activateQueue: { at: Pos; special: Special }[] = [];
+    const activateQueue: ActivateJob[] = [];
 
     for (const match of matches) {
       const spawnSpecial = spawnSpecialForMatch(
@@ -106,7 +180,7 @@ export function resolveBoard(
       for (const cell of match.cells) {
         const tile = getTile(board, cell);
         if (tile && tile.special !== "none") {
-          activateQueue.push({ at: cell, special: tile.special });
+          activateQueue.push({ at: cell, special: tile.special, plain: Boolean(tile.plain) });
         }
         addCell(clearSet, toClear, cell);
       }
@@ -115,15 +189,17 @@ export function resolveBoard(
       }
     }
 
-    const fxEvents = activateSpecials(board, rng, activateQueue, clearSet, toClear, stats);
+    const first = activateSpecials(board, rng, activateQueue, clearSet, toClear, stats);
     events.push({ type: "highlight", cells: [...toClear] });
-    events.push(...fxEvents);
+    events.push(...first.fxEvents);
 
     for (const cell of toClear) setTile(board, cell, null);
     if (toClear.length) {
       events.push({ type: "clear", cells: [...toClear] });
       cleared += toClear.length;
     }
+
+    let echoes = first.echoes;
 
     for (const spawn of spawns) {
       const tile = makeTile(spawn.color, spawn.special);
@@ -135,22 +211,46 @@ export function resolveBoard(
       const extraClear: Pos[] = [];
       const extraSet = new Set<string>();
       const detonateQueue = spawns.map((spawn) => ({ at: spawn.at, special: spawn.special }));
-      const detonateFx = activateSpecials(board, rng, detonateQueue, extraSet, extraClear, stats);
+      const second = activateSpecials(board, rng, detonateQueue, extraSet, extraClear, stats);
       const newlyCleared = extraClear.filter((cell) => getTile(board, cell));
       if (newlyCleared.length) {
         events.push({ type: "highlight", cells: newlyCleared });
       }
-      events.push(...detonateFx);
+      events.push(...second.fxEvents);
       for (const cell of newlyCleared) setTile(board, cell, null);
       if (newlyCleared.length) {
         events.push({ type: "clear", cells: newlyCleared });
         cleared += newlyCleared.length;
       }
+      echoes = [...echoes, ...second.echoes];
     }
 
-    const { falls, drops } = settleBoard(board, rng);
-    if (falls.length) events.push({ type: "fall", moves: falls });
-    if (drops.length) events.push({ type: "dropIn", drops });
+    if (echoes.length) {
+      const planted = plantEchoes(board, echoes);
+      events.push(...planted.events);
+      const settled = settleBoard(board, rng);
+      if (settled.falls.length) events.push({ type: "fall", moves: settled.falls });
+      if (settled.drops.length) events.push({ type: "dropIn", drops: settled.drops });
+      if (shouldAutoDetonate(stats) && planted.ids.size) {
+        const echoJobs = jobsForTileIds(board, planted.ids);
+        if (echoJobs.length) {
+          const echoClear: Pos[] = [];
+          const echoSet = new Set<string>();
+          const boom = activateSpecials(board, rng, echoJobs, echoSet, echoClear, stats);
+          events.push(...boom.fxEvents);
+          const extra = clearActivated(board, echoClear);
+          events.push(...extra.events);
+          cleared += extra.cleared;
+          const refill = settleBoard(board, rng);
+          if (refill.falls.length) events.push({ type: "fall", moves: refill.falls });
+          if (refill.drops.length) events.push({ type: "dropIn", drops: refill.drops });
+        }
+      }
+    } else {
+      const { falls, drops } = settleBoard(board, rng);
+      if (falls.length) events.push({ type: "fall", moves: falls });
+      if (drops.length) events.push({ type: "dropIn", drops: drops });
+    }
   }
 
   return { events, cleared, chain };

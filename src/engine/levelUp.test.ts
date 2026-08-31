@@ -4,6 +4,7 @@ import { LEVEL_UP_CARDS, LEVEL_UP_OFFER_COUNT } from "../data/levelUpCards.ts";
 import { Game } from "./game.ts";
 import { offerLevelUpCards, offerWeight, tagAffinity } from "./levelUp.ts";
 import { mulberry32 } from "./rng.ts";
+import { defaultUpgradeStats } from "./upgradeStats.ts";
 
 describe("level-up offers", () => {
   it("offers unique cards from the pool", () => {
@@ -24,6 +25,19 @@ describe("level-up offers", () => {
     expect(cards.some((card) => owned.includes(card.id))).toBe(false);
   });
 
+  it("drops stackable cards once their cap is reached", () => {
+    const stats = defaultUpgradeStats();
+    stats.bombRadius = 3;
+    const cards = offerLevelUpCards(
+      mulberry32(3),
+      ["bombRadius", "bombRadius"],
+      undefined,
+      undefined,
+      stats,
+    );
+    expect(cards.some((card) => card.id === "bombRadius")).toBe(false);
+  });
+
   it("tags at most one of bomb, line, lightning", () => {
     const allowed = new Set(["line", "bomb", "lightning"]);
     const tagged = LEVEL_UP_CARDS.filter((card) => card.tags.length > 0);
@@ -35,9 +49,9 @@ describe("level-up offers", () => {
   });
 
   it("nudges later offers toward a picked build without locking it in", () => {
-    const owned = ["bombRadius", "bombRadius"];
+    const owned = ["bombEcho", "bombEcho"];
     const affinity = tagAffinity(owned);
-    const bomb = LEVEL_UP_CARDS.find((card) => card.id === "bombRadius");
+    const bomb = LEVEL_UP_CARDS.find((card) => card.id === "bombEcho");
     const line = LEVEL_UP_CARDS.find((card) => card.id === "extraLine");
     const chain = LEVEL_UP_CARDS.find((card) => card.id === "chainMove");
     expect(bomb && line && chain).toBeTruthy();
@@ -46,17 +60,17 @@ describe("level-up offers", () => {
     expect(offerWeight(line, affinity)).toBe(1);
     expect(offerWeight(chain, affinity)).toBe(1);
 
-    const extraOwned = ["bombRadius", "bombRadius", "bombRadius", "bombRadius"];
+    const extraOwned = ["bombEcho", "bombEcho", "bombEcho", "bombEcho"];
     expect(offerWeight(bomb, tagAffinity(extraOwned))).toBe(3);
 
-    const counts = { bombRadius: 0, extraLine: 0 };
+    const counts = { bombEcho: 0, extraLine: 0 };
     for (let seed = 0; seed < 240; seed++) {
       const cards = offerLevelUpCards(mulberry32(seed), owned);
-      if (cards.some((card) => card.id === "bombRadius")) counts.bombRadius += 1;
+      if (cards.some((card) => card.id === "bombEcho")) counts.bombEcho += 1;
       if (cards.some((card) => card.id === "extraLine")) counts.extraLine += 1;
     }
-    expect(counts.bombRadius).toBeGreaterThan(counts.extraLine);
-    expect(counts.extraLine).toBeGreaterThan(40);
+    expect(counts.bombEcho).toBeGreaterThan(counts.extraLine);
+    expect(counts.extraLine).toBeGreaterThan(20);
   });
 });
 

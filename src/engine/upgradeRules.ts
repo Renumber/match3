@@ -6,7 +6,7 @@
 // game / resolve / specials는 아래 runner만 호출. 카드 전용 if 넣지 말 것.
 // 훅 종류가 모자라면 UpgradeRule에 필드 하나 + runner 하나 + 엔진 호출 한 줄.
 
-import { COLS, ROWS, type Pos, type Special, type Tile } from "./types.ts";
+import { COLS, ROWS, inBounds, posKey, type Pos, type Special, type Tile } from "./types.ts";
 import type { GameEvent, ResolveResult } from "./events.ts";
 import type { Rng } from "./rng.ts";
 import {
@@ -14,6 +14,7 @@ import {
   lineRows,
   specialFromThreeMatch,
   spreadIndices,
+  squareCorners,
 } from "./specialShape.ts";
 import type { UpgradeStats } from "./upgradeStats.ts";
 
@@ -28,10 +29,16 @@ export type SpecialCellCtx = SpecialOriginCtx & {
   rng: Rng;
 };
 
+export type EchoBurst = {
+  at: Pos;
+  special: Special;
+};
+
 export type UpgradeRule = {
   id: string;
   extraCells?: (ctx: SpecialCellCtx) => Pos[];
   extraFx?: (ctx: SpecialOriginCtx) => GameEvent[];
+  echoBursts?: (ctx: SpecialCellCtx & { struck: Pos[] }) => EchoBurst[];
   threeMatchSpawn?: (ctx: {
     cells: Pos[];
     origin: Pos;
@@ -105,6 +112,36 @@ const bombCross: UpgradeRule = {
   },
 };
 
+const bombEcho: UpgradeRule = {
+  id: "bombEcho",
+  echoBursts: ({ special, origin, stats }) => {
+    if (special !== "bomb" || stats.bombEcho <= 0) return [];
+    return squareCorners(origin, stats.bombRadius)
+      .slice(0, stats.bombEcho)
+      .map((at) => ({ at, special: "bomb" as const }));
+  },
+};
+
+const lightningEcho: UpgradeRule = {
+  id: "lightningEcho",
+  echoBursts: ({ special, origin, stats, struck }) => {
+    if (special !== "lightning" || stats.lightningEcho <= 0) return [];
+    return struck
+      .filter((cell) => cell.r !== origin.r || cell.c !== origin.c)
+      .slice(0, stats.lightningEcho)
+      .map((at) => ({ at, special: "lightning" as const }));
+  },
+};
+
+const lightningSeedBomb: UpgradeRule = {
+  id: "lightningSeedBomb",
+  echoBursts: ({ special, origin, stats, struck }) => {
+    if (special !== "lightning" || !stats.lightningSeedBomb) return [];
+    const at = struck.find((cell) => cell.r !== origin.r || cell.c !== origin.c);
+    return at ? [{ at, special: "bomb" }] : [];
+  },
+};
+
 const specialSpawn: UpgradeRule = {
   id: "specialSpawn",
   threeMatchSpawn: ({ cells, origin, rng, stats }) => {
@@ -149,6 +186,9 @@ export const UPGRADE_RULES: UpgradeRule[] = [
   extraLine,
   crossLine,
   bombCross,
+  bombEcho,
+  lightningEcho,
+  lightningSeedBomb,
   specialSpawn,
   autoDetonate,
   chainMove,
@@ -171,6 +211,21 @@ export function extraSpecialFx(ctx: SpecialOriginCtx): GameEvent[] {
     if (rule.extraFx) events.push(...rule.extraFx(ctx));
   }
   return events;
+}
+
+export function collectEchoBursts(ctx: SpecialCellCtx & { struck: Pos[] }): EchoBurst[] {
+  const bursts: EchoBurst[] = [];
+  const seen = new Set<string>();
+  for (const rule of UPGRADE_RULES) {
+    for (const burst of rule.echoBursts?.(ctx) ?? []) {
+      if (!inBounds(burst.at)) continue;
+      const key = `${posKey(burst.at)}:${burst.special}`;
+      if (seen.has(key)) continue;
+      seen.add(key);
+      bursts.push(burst);
+    }
+  }
+  return bursts;
 }
 
 export function spawnFromThreeMatch(
