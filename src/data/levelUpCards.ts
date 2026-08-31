@@ -9,10 +9,19 @@ export type UpgradeEffect = {
   chainMoveBonus?: number;
 };
 
+export type UpgradeTag = "line" | "bomb" | "lightning";
+
+export const UPGRADE_TAG_LABEL: Record<UpgradeTag, string> = {
+  line: "직선",
+  bomb: "폭탄",
+  lightning: "번개",
+};
+
 export type LevelUpCard = {
   id: string;
   title: string;
   description: string;
+  tags: UpgradeTag[];
   stackable: boolean;
   effect: UpgradeEffect;
 };
@@ -24,6 +33,7 @@ export const LEVEL_UP_CARDS: LevelUpCard[] = [
     id: "bombRadius",
     title: "폭탄 확대",
     description: "폭탄이 더 넓게 터진다",
+    tags: ["bomb"],
     stackable: true,
     effect: { bombRadius: 1 },
   },
@@ -31,6 +41,7 @@ export const LEVEL_UP_CARDS: LevelUpCard[] = [
     id: "extraLine",
     title: "직선 추가",
     description: "라인이 한 줄 더 나간다",
+    tags: ["line"],
     stackable: true,
     effect: { extraLines: 1 },
   },
@@ -38,6 +49,7 @@ export const LEVEL_UP_CARDS: LevelUpCard[] = [
     id: "lightningTargets",
     title: "번개 증폭",
     description: "번개가 더 많이 친다",
+    tags: ["lightning"],
     stackable: true,
     effect: { lightningTargets: 2 },
   },
@@ -45,6 +57,7 @@ export const LEVEL_UP_CARDS: LevelUpCard[] = [
     id: "specialSpawnChance",
     title: "특수 생성",
     description: "3매치에서도 특수 타일이 나올 수 있다",
+    tags: [],
     stackable: true,
     effect: { specialSpawnChance: 0.25 },
   },
@@ -52,6 +65,7 @@ export const LEVEL_UP_CARDS: LevelUpCard[] = [
     id: "autoDetonate",
     title: "자동 점화",
     description: "특수 타일이 생기면 바로 발동한다",
+    tags: [],
     stackable: false,
     effect: { autoDetonate: true },
   },
@@ -59,6 +73,7 @@ export const LEVEL_UP_CARDS: LevelUpCard[] = [
     id: "chainMove",
     title: "체인 호흡",
     description: "Chain 15에 Move +1",
+    tags: [],
     stackable: false,
     effect: { chainMoveThreshold: 15, chainMoveBonus: 1 },
   },

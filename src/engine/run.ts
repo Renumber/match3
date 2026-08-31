@@ -1,4 +1,4 @@
-export const STARTING_MOVES = 30;
+export const STARTING_MOVES = 40;
 
 export type RunProgress = {
   level: number;

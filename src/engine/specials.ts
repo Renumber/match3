@@ -1,7 +1,26 @@
 import { COLS, ROWS, inBounds, type Pos, type Special, type Tile } from "./types.ts";
 import { getTile } from "./board.ts";
-import { shuffleInPlace, type Rng } from "./rng.ts";
+import { pickWeightedIndex, shuffleInPlace, type Rng } from "./rng.ts";
 import { defaultUpgradeStats, type UpgradeStats } from "./upgrades.ts";
+
+export const THREE_MATCH_SPECIAL_WEIGHTS: { kind: "line" | "bomb" | "lightning"; weight: number }[] =
+  [
+    { kind: "line", weight: 5 },
+    { kind: "bomb", weight: 3 },
+    { kind: "lightning", weight: 2 },
+  ];
+
+export function specialFromThreeMatch(cells: Pos[], origin: Pos, rng: Rng): Special {
+  const idx = pickWeightedIndex(
+    rng,
+    THREE_MATCH_SPECIAL_WEIGHTS.map((item) => item.weight),
+  );
+  const picked = THREE_MATCH_SPECIAL_WEIGHTS[idx]?.kind ?? "line";
+  if (picked === "bomb") return "bomb";
+  if (picked === "lightning") return "lightning";
+  const horizontal = cells.every((cell) => cell.r === origin.r);
+  return horizontal ? "lineH" : "lineV";
+}
 
 export function spreadIndices(origin: number, extra: number, max: number): number[] {
   const indices = [origin];

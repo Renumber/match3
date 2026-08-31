@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { emptyBoard, makeTile, resetTileIds, setTile } from "./board.ts";
 import { mulberry32 } from "./rng.ts";
-import { cellsForSpecial } from "./specials.ts";
+import { cellsForSpecial, specialFromThreeMatch } from "./specials.ts";
 import { defaultUpgradeStats } from "./upgrades.ts";
 
 describe("cellsForSpecial upgrades", () => {
@@ -40,5 +40,36 @@ describe("cellsForSpecial upgrades", () => {
       stats,
     );
     expect(cells).toHaveLength(4);
+  });
+});
+
+describe("specialFromThreeMatch", () => {
+  it("follows the match axis when a line is rolled", () => {
+    const line = specialFromThreeMatch(
+      [
+        { r: 1, c: 0 },
+        { r: 1, c: 1 },
+        { r: 1, c: 2 },
+      ],
+      { r: 1, c: 1 },
+      () => 0,
+    );
+    expect(line).toBe("lineH");
+  });
+
+  it("rolls bomb, lightning, and line across seeds", () => {
+    const cells = [
+      { r: 0, c: 0 },
+      { r: 1, c: 0 },
+      { r: 2, c: 0 },
+    ];
+    const origin = { r: 1, c: 0 };
+    const kinds = new Set<string>();
+    for (let seed = 0; seed < 80; seed++) {
+      kinds.add(specialFromThreeMatch(cells, origin, mulberry32(seed)));
+    }
+    expect(kinds.has("lineV")).toBe(true);
+    expect(kinds.has("bomb")).toBe(true);
+    expect(kinds.has("lightning")).toBe(true);
   });
 });
