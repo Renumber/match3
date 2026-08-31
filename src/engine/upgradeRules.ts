@@ -116,6 +116,27 @@ function struckWithoutOrigin(struck: Pos[], origin: Pos): Pos[] {
   return struck.filter((cell) => cell.r !== origin.r || cell.c !== origin.c);
 }
 
+function pickStruckEchoes(
+  struck: Pos[],
+  origin: Pos,
+  count: number,
+  rng: Rng,
+  special: Special,
+): EchoBurst[] {
+  if (count <= 0) return [];
+  const cells = struckWithoutOrigin(struck, origin);
+  shuffleInPlace(cells, rng);
+  return cells.slice(0, count).map((at) => ({ at, special }));
+}
+
+const lineEcho: UpgradeRule = {
+  id: "lineEcho",
+  echoBursts: ({ special, origin, stats, struck, rng }) => {
+    if ((special !== "lineH" && special !== "lineV") || stats.lineEcho <= 0) return [];
+    return pickStruckEchoes(struck, origin, stats.lineEcho, rng, special);
+  },
+};
+
 const bombEcho: UpgradeRule = {
   id: "bombEcho",
   echoBursts: ({ special, origin, stats, rng }) => {
@@ -131,9 +152,7 @@ const lightningEcho: UpgradeRule = {
   id: "lightningEcho",
   echoBursts: ({ special, origin, stats, struck, rng }) => {
     if (special !== "lightning" || stats.lightningEcho <= 0) return [];
-    const cells = struckWithoutOrigin(struck, origin);
-    shuffleInPlace(cells, rng);
-    return cells.slice(0, stats.lightningEcho).map((at) => ({ at, special: "lightning" as const }));
+    return pickStruckEchoes(struck, origin, stats.lightningEcho, rng, "lightning");
   },
 };
 
@@ -191,6 +210,7 @@ const xpBoost: UpgradeRule = {
 export const UPGRADE_RULES: UpgradeRule[] = [
   extraLine,
   crossLine,
+  lineEcho,
   bombCross,
   bombEcho,
   lightningEcho,

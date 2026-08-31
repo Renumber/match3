@@ -42,6 +42,7 @@ export function effectLines(effect: UpgradeEffect): string[] {
     lines.push(`Chain ${effect.chainMoveThreshold}에 Move +${effect.chainMoveBonus ?? 1}`);
   }
   if (effect.crossLine) lines.push("라인 십자");
+  if (effect.lineEcho) lines.push(`잔류 직선 +${effect.lineEcho}`);
   if (effect.bombCross) lines.push("폭탄 십자");
   if (effect.bombEcho) lines.push(`랜덤 모서리 작은 폭탄 +${effect.bombEcho}`);
   if (effect.lightningEcho) lines.push(`잔류 번개 +${effect.lightningEcho}`);
@@ -60,6 +61,7 @@ export function runStatRows(stats: UpgradeStats): InfoRow[] {
     { label: "3매치 특수", value: percent(stats.specialSpawnChance) },
     { label: "자동 점화", value: onOff(stats.autoDetonate) },
     { label: "십자 절단", value: onOff(stats.crossLine) },
+    { label: "잔류 직선", value: stats.lineEcho > 0 ? `랜덤 칸 ×${stats.lineEcho}` : "꺼짐" },
     { label: "십자 폭파", value: onOff(stats.bombCross) },
     { label: "파편 폭탄", value: stats.bombEcho > 0 ? `랜덤 모서리 ×${stats.bombEcho}` : "꺼짐" },
     { label: "잔류 번개", value: String(stats.lightningEcho) },

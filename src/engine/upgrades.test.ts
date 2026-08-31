@@ -47,11 +47,12 @@ describe("applyUpgradeEffect", () => {
 
   it("caps leftover special counts", () => {
     const stats = defaultUpgradeStats();
-    applyUpgradeEffect(stats, { bombEcho: 1, lightningEcho: 1 });
-    applyUpgradeEffect(stats, { bombEcho: 1, lightningEcho: 1 });
-    applyUpgradeEffect(stats, { bombEcho: 4, lightningSeedBomb: true });
+    applyUpgradeEffect(stats, { bombEcho: 1, lightningEcho: 1, lineEcho: 1 });
+    applyUpgradeEffect(stats, { bombEcho: 1, lightningEcho: 1, lineEcho: 1 });
+    applyUpgradeEffect(stats, { bombEcho: 4, lightningSeedBomb: true, lineEcho: 2 });
     expect(stats.bombEcho).toBe(4);
     expect(stats.lightningEcho).toBe(2);
+    expect(stats.lineEcho).toBe(2);
     expect(stats.lightningSeedBomb).toBe(true);
   });
 

@@ -45,6 +45,13 @@ describe("upgradeInfo", () => {
     expect(card?.value).toContain("3택 고정");
   });
 
+  it("prints leftover line effect lines", () => {
+    const card = LEVEL_UP_CARDS.find((item) => item.id === "lineEcho");
+    expect(card).toBeDefined();
+    if (!card) return;
+    expect(effectLines(card.effect)).toContain("잔류 직선 +1");
+  });
+
   it("prints numeric effect lines for a card", () => {
     const card = LEVEL_UP_CARDS.find((item) => item.id === "specialSpawnChance");
     expect(card).toBeDefined();

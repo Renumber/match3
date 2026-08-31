@@ -110,6 +110,15 @@ export const LEVEL_UP_CARDS: LevelUpCard[] = [
     effect: { crossLine: true },
   },
   {
+    id: "lineEcho",
+    title: "잔류 직선",
+    description: "지운 줄의 랜덤 칸에 직선을 남긴다",
+    tags: ["line"],
+    rarity: "uncommon",
+    stackable: true,
+    effect: { lineEcho: 1 },
+  },
+  {
     id: "bombCross",
     title: "십자 폭파",
     description: "폭탄이 십자로도 터진다",

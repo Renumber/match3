@@ -103,6 +103,69 @@ describe("upgrade rule registry", () => {
     expect(full).toHaveLength(4);
   });
 
+  it("plants leftover lines on struck cells", () => {
+    const stats = defaultUpgradeStats();
+    stats.lineEcho = 2;
+    const struck = [
+      { r: 2, c: 0 },
+      { r: 2, c: 1 },
+      { r: 2, c: 2 },
+      { r: 2, c: 3 },
+      { r: 2, c: 4 },
+    ];
+    const origin = { r: 2, c: 2 };
+    const bursts = collectEchoBursts({
+      special: "lineH",
+      origin,
+      board: emptyBoard(),
+      rng: mulberry32(1),
+      stats,
+      struck,
+    });
+    const struckKeys = new Set(struck.map((cell) => `${cell.r},${cell.c}`));
+    expect(bursts).toHaveLength(2);
+    expect(bursts.every((burst) => burst.special === "lineH")).toBe(true);
+    expect(bursts.every((burst) => struckKeys.has(`${burst.at.r},${burst.at.c}`))).toBe(true);
+    expect(bursts.some((burst) => burst.at.r === origin.r && burst.at.c === origin.c)).toBe(false);
+  });
+
+  it("picks leftover line cells at random and covers more with more stacks", () => {
+    const stats = defaultUpgradeStats();
+    stats.lineEcho = 1;
+    const struck = [
+      { r: 4, c: 0 },
+      { r: 4, c: 1 },
+      { r: 4, c: 2 },
+      { r: 4, c: 3 },
+    ];
+    const keys = new Set<string>();
+    for (let seed = 0; seed < 40; seed++) {
+      const bursts = collectEchoBursts({
+        special: "lineV",
+        origin: { r: 4, c: 1 },
+        board: emptyBoard(),
+        rng: mulberry32(seed),
+        stats,
+        struck,
+      });
+      expect(bursts).toHaveLength(1);
+      expect(bursts[0]?.special).toBe("lineV");
+      keys.add(`${bursts[0]?.at.r},${bursts[0]?.at.c}`);
+    }
+    expect(keys.size).toBeGreaterThan(1);
+
+    stats.lineEcho = 2;
+    const more = collectEchoBursts({
+      special: "lineV",
+      origin: { r: 4, c: 1 },
+      board: emptyBoard(),
+      rng: mulberry32(1),
+      stats,
+      struck,
+    });
+    expect(more).toHaveLength(2);
+  });
+
   it("plants leftover lightning on struck cells", () => {
     const stats = defaultUpgradeStats();
     stats.lightningEcho = 1;

@@ -159,6 +159,28 @@ describe("resolveBoard", () => {
     expect(leftoverActivate).toBeGreaterThan(settleIdx);
   });
 
+  it("lets a line leave another line on the board", () => {
+    const board = grid([
+      "00043210",
+      "12340123",
+      "23401234",
+      "34012340",
+      "40123401",
+      "01234012",
+      "12340123",
+      "23401234",
+    ]);
+    setTile(board, { r: 0, c: 1 }, makeTile(0, "lineH"));
+    const stats = defaultUpgradeStats();
+    stats.lineEcho = 1;
+    const result = resolveBoard(board, mulberry32(1), { r: 0, c: 2 }, stats);
+    expect(result.events.some((e) => e.type === "activate" && e.special === "lineH")).toBe(true);
+    expect(
+      result.events.some((e) => e.type === "spawn" && e.special === "lineH" && e.tile.plain),
+    ).toBe(true);
+    expect(leftoverPlain(board, "lineH")).toBe(true);
+  });
+
   it("lets lightning leave another lightning on the board", () => {
     const board = grid([
       "000.....",

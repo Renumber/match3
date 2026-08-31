@@ -15,6 +15,7 @@ export const UPGRADE_STAT_DEFS = {
   chainMoveThreshold: { merge: "set", default: 0 },
   chainMoveBonus: { merge: "add", default: 0 },
   crossLine: { merge: "or", default: false },
+  lineEcho: { merge: "cap", default: 0, cap: 2 },
   bombCross: { merge: "or", default: false },
   bombEcho: { merge: "cap", default: 0, cap: 4 },
   lightningEcho: { merge: "cap", default: 0, cap: 2 },
