@@ -121,7 +121,7 @@ export const LEVEL_UP_CARDS: LevelUpCard[] = [
   {
     id: "bombEcho",
     title: "파편 폭탄",
-    description: "폭탄이 작은 폭탄을 남긴다",
+    description: "랜덤한 폭발 모서리에 작은 폭탄을 남긴다",
     tags: ["bomb"],
     rarity: "uncommon",
     stackable: true,
@@ -130,7 +130,7 @@ export const LEVEL_UP_CARDS: LevelUpCard[] = [
   {
     id: "lightningEcho",
     title: "잔류 번개",
-    description: "맞은 칸에 번개를 남긴다",
+    description: "맞은 칸 중 랜덤에 번개를 남긴다",
     tags: ["lightning"],
     rarity: "uncommon",
     stackable: true,

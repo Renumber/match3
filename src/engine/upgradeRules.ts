@@ -8,13 +8,13 @@
 
 import { COLS, ROWS, inBounds, posKey, type Pos, type Special, type Tile } from "./types.ts";
 import type { GameEvent, ResolveResult } from "./events.ts";
-import type { Rng } from "./rng.ts";
+import { pickInt, shuffleInPlace, type Rng } from "./rng.ts";
 import {
   lineCols,
   lineRows,
+  pickSquareCorners,
   specialFromThreeMatch,
   spreadIndices,
-  squareCorners,
 } from "./specialShape.ts";
 import type { UpgradeStats } from "./upgradeStats.ts";
 
@@ -112,32 +112,38 @@ const bombCross: UpgradeRule = {
   },
 };
 
+function struckWithoutOrigin(struck: Pos[], origin: Pos): Pos[] {
+  return struck.filter((cell) => cell.r !== origin.r || cell.c !== origin.c);
+}
+
 const bombEcho: UpgradeRule = {
   id: "bombEcho",
-  echoBursts: ({ special, origin, stats }) => {
+  echoBursts: ({ special, origin, stats, rng }) => {
     if (special !== "bomb" || stats.bombEcho <= 0) return [];
-    return squareCorners(origin, stats.bombRadius)
-      .slice(0, stats.bombEcho)
-      .map((at) => ({ at, special: "bomb" as const }));
+    return pickSquareCorners(origin, stats.bombRadius, stats.bombEcho, rng).map((at) => ({
+      at,
+      special: "bomb" as const,
+    }));
   },
 };
 
 const lightningEcho: UpgradeRule = {
   id: "lightningEcho",
-  echoBursts: ({ special, origin, stats, struck }) => {
+  echoBursts: ({ special, origin, stats, struck, rng }) => {
     if (special !== "lightning" || stats.lightningEcho <= 0) return [];
-    return struck
-      .filter((cell) => cell.r !== origin.r || cell.c !== origin.c)
-      .slice(0, stats.lightningEcho)
-      .map((at) => ({ at, special: "lightning" as const }));
+    const cells = struckWithoutOrigin(struck, origin);
+    shuffleInPlace(cells, rng);
+    return cells.slice(0, stats.lightningEcho).map((at) => ({ at, special: "lightning" as const }));
   },
 };
 
 const lightningSeedBomb: UpgradeRule = {
   id: "lightningSeedBomb",
-  echoBursts: ({ special, origin, stats, struck }) => {
+  echoBursts: ({ special, origin, stats, struck, rng }) => {
     if (special !== "lightning" || !stats.lightningSeedBomb) return [];
-    const at = struck.find((cell) => cell.r !== origin.r || cell.c !== origin.c);
+    const cells = struckWithoutOrigin(struck, origin);
+    if (!cells.length) return [];
+    const at = cells[pickInt(rng, cells.length)];
     return at ? [{ at, special: "bomb" }] : [];
   },
 };

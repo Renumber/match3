@@ -1,9 +1,4 @@
-import {
-  LEVEL_UP_CARDS,
-  UPGRADE_TAG_LABEL,
-  cardRarityLabel,
-  type LevelUpCard,
-} from "../data/levelUpCards.ts";
+import { LEVEL_UP_CARDS, UPGRADE_TAG_LABEL, type LevelUpCard } from "../data/levelUpCards.ts";
 import {
   affinityRows,
   effectLines,
@@ -61,21 +56,18 @@ function renderCard(card: LevelUpCard, owned: number): HTMLElement {
   const title = document.createElement("strong");
   title.textContent = card.title;
   head.append(title);
-  const chips = document.createElement("div");
-  chips.className = "levelup-tags";
-  const rarity = document.createElement("em");
-  rarity.className = "levelup-tag";
-  rarity.dataset.rarity = card.core ? "core" : card.rarity;
-  rarity.textContent = cardRarityLabel(card);
-  chips.append(rarity);
-  for (const tag of card.tags) {
-    const chip = document.createElement("em");
-    chip.className = "levelup-tag";
-    chip.dataset.tag = tag;
-    chip.textContent = UPGRADE_TAG_LABEL[tag];
-    chips.append(chip);
+  if (card.tags.length) {
+    const chips = document.createElement("div");
+    chips.className = "levelup-tags";
+    for (const tag of card.tags) {
+      const chip = document.createElement("em");
+      chip.className = "levelup-tag";
+      chip.dataset.tag = tag;
+      chip.textContent = UPGRADE_TAG_LABEL[tag];
+      chips.append(chip);
+    }
+    head.append(chips);
   }
-  head.append(chips);
 
   const meta = document.createElement("p");
   meta.className = "codex-meta";

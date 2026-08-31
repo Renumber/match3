@@ -54,10 +54,60 @@ describe("upgrade rule registry", () => {
     ).toBe(true);
   });
 
+  it("clamps leftover bombs onto the clipped edge of the board", () => {
+    const stats = defaultUpgradeStats();
+    stats.bombEcho = 4;
+    const bursts = collectEchoBursts({
+      special: "bomb",
+      origin: { r: 0, c: 3 },
+      board: emptyBoard(),
+      rng: mulberry32(1),
+      stats,
+      struck: [],
+    });
+    const keys = new Set(bursts.map((burst) => `${burst.at.r},${burst.at.c}`));
+    expect(bursts).toHaveLength(4);
+    expect(keys.has("0,2")).toBe(true);
+    expect(keys.has("0,4")).toBe(true);
+    expect(keys.has("1,2")).toBe(true);
+    expect(keys.has("1,4")).toBe(true);
+  });
+
+  it("picks leftover bomb corners at random and covers more with more stacks", () => {
+    const stats = defaultUpgradeStats();
+    stats.bombEcho = 1;
+    const keys = new Set<string>();
+    for (let seed = 0; seed < 40; seed++) {
+      const bursts = collectEchoBursts({
+        special: "bomb",
+        origin: { r: 3, c: 3 },
+        board: emptyBoard(),
+        rng: mulberry32(seed),
+        stats,
+        struck: [],
+      });
+      expect(bursts).toHaveLength(1);
+      keys.add(`${bursts[0]?.at.r},${bursts[0]?.at.c}`);
+    }
+    expect(keys.size).toBeGreaterThan(1);
+
+    stats.bombEcho = 4;
+    const full = collectEchoBursts({
+      special: "bomb",
+      origin: { r: 3, c: 3 },
+      board: emptyBoard(),
+      rng: mulberry32(1),
+      stats,
+      struck: [],
+    });
+    expect(full).toHaveLength(4);
+  });
+
   it("plants leftover lightning on struck cells", () => {
     const stats = defaultUpgradeStats();
     stats.lightningEcho = 1;
     stats.lightningSeedBomb = true;
+    const struckKeys = new Set(["2,3", "4,5"]);
     const bursts = collectEchoBursts({
       special: "lightning",
       origin: { r: 0, c: 0 },
@@ -70,7 +120,13 @@ describe("upgrade rule registry", () => {
         { r: 4, c: 5 },
       ],
     });
-    expect(bursts.some((burst) => burst.special === "lightning" && burst.at.r === 2)).toBe(true);
-    expect(bursts.some((burst) => burst.special === "bomb" && burst.at.r === 2)).toBe(true);
+    expect(
+      bursts.some(
+        (burst) => burst.special === "lightning" && struckKeys.has(`${burst.at.r},${burst.at.c}`),
+      ),
+    ).toBe(true);
+    expect(
+      bursts.some((burst) => burst.special === "bomb" && struckKeys.has(`${burst.at.r},${burst.at.c}`)),
+    ).toBe(true);
   });
 });

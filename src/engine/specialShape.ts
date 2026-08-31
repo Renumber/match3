@@ -66,12 +66,22 @@ export function bombCells(origin: Pos, radius: number): Pos[] {
 
 export function squareCorners(origin: Pos, radius: number): Pos[] {
   const r = Math.max(1, radius);
+  const rMin = Math.max(0, origin.r - r);
+  const rMax = Math.min(ROWS - 1, origin.r + r);
+  const cMin = Math.max(0, origin.c - r);
+  const cMax = Math.min(COLS - 1, origin.c + r);
   return uniquePos([
-    { r: origin.r - r, c: origin.c - r },
-    { r: origin.r - r, c: origin.c + r },
-    { r: origin.r + r, c: origin.c - r },
-    { r: origin.r + r, c: origin.c + r },
-  ]).filter(inBounds);
+    { r: rMin, c: cMin },
+    { r: rMin, c: cMax },
+    { r: rMax, c: cMin },
+    { r: rMax, c: cMax },
+  ]);
+}
+
+export function pickSquareCorners(origin: Pos, radius: number, count: number, rng: Rng): Pos[] {
+  const corners = squareCorners(origin, radius);
+  shuffleInPlace(corners, rng);
+  return corners.slice(0, Math.max(0, count));
 }
 
 export function lightningTargets(
