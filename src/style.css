@@ -228,16 +228,6 @@ body {
   color: #fde047;
 }
 
-.levelup-tag[data-tag="special"] {
-  background: #2e1065;
-  color: #d8b4fe;
-}
-
-.levelup-tag[data-tag="chain"] {
-  background: #052e16;
-  color: #86efac;
-}
-
 @media (max-width: 520px) {
   .hint {
     max-width: 38vw;

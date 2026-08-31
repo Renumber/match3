@@ -23,22 +23,39 @@ describe("level-up offers", () => {
     expect(cards.some((card) => owned.includes(card.id))).toBe(false);
   });
 
-  it("weighs later offers toward tags already picked", () => {
+  it("tags only bomb, line, and lightning cards", () => {
+    const tagged = LEVEL_UP_CARDS.filter((card) => card.tags.length > 0);
+    expect(tagged.map((card) => card.id).sort()).toEqual(
+      ["bombRadius", "extraLine", "lightningTargets"].sort(),
+    );
+    for (const card of tagged) {
+      expect(card.tags).toHaveLength(1);
+    }
+  });
+
+  it("nudges later offers toward a picked build without locking it in", () => {
     const owned = ["bombRadius", "bombRadius"];
     const affinity = tagAffinity(owned);
     const bomb = LEVEL_UP_CARDS.find((card) => card.id === "bombRadius");
+    const line = LEVEL_UP_CARDS.find((card) => card.id === "extraLine");
     const chain = LEVEL_UP_CARDS.find((card) => card.id === "chainMove");
-    expect(bomb && chain).toBeTruthy();
-    if (!bomb || !chain) return;
-    expect(offerWeight(bomb, affinity)).toBeGreaterThan(offerWeight(chain, affinity));
+    expect(bomb && line && chain).toBeTruthy();
+    if (!bomb || !line || !chain) return;
+    expect(offerWeight(bomb, affinity)).toBe(3);
+    expect(offerWeight(line, affinity)).toBe(1);
+    expect(offerWeight(chain, affinity)).toBe(1);
 
-    const counts = { bombRadius: 0, chainMove: 0 };
+    const extraOwned = ["bombRadius", "bombRadius", "bombRadius", "bombRadius"];
+    expect(offerWeight(bomb, tagAffinity(extraOwned))).toBe(3);
+
+    const counts = { bombRadius: 0, extraLine: 0 };
     for (let seed = 0; seed < 240; seed++) {
       const cards = offerLevelUpCards(mulberry32(seed), owned);
       if (cards.some((card) => card.id === "bombRadius")) counts.bombRadius += 1;
-      if (cards.some((card) => card.id === "chainMove")) counts.chainMove += 1;
+      if (cards.some((card) => card.id === "extraLine")) counts.extraLine += 1;
     }
-    expect(counts.bombRadius).toBeGreaterThan(counts.chainMove);
+    expect(counts.bombRadius).toBeGreaterThan(counts.extraLine);
+    expect(counts.extraLine).toBeGreaterThan(80);
   });
 });
 

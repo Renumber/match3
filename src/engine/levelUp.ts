@@ -6,7 +6,8 @@ import {
 } from "../data/levelUpCards.ts";
 import { takeWeighted, type Rng } from "./rng.ts";
 
-export const TAG_AFFINITY_BONUS = 2;
+export const TAG_AFFINITY_BONUS = 1;
+export const TAG_AFFINITY_CAP = 2;
 
 export function cardById(
   id: string,
@@ -34,11 +35,11 @@ export function offerWeight(
   card: LevelUpCard,
   affinity: Map<UpgradeTag, number>,
 ): number {
-  let weight = 1;
+  let matched = 0;
   for (const tag of card.tags) {
-    weight += TAG_AFFINITY_BONUS * (affinity.get(tag) ?? 0);
+    matched += affinity.get(tag) ?? 0;
   }
-  return weight;
+  return 1 + TAG_AFFINITY_BONUS * Math.min(TAG_AFFINITY_CAP, matched);
 }
 
 export function offerLevelUpCards(
