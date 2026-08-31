@@ -212,6 +212,21 @@ body {
   cursor: pointer;
 }
 
+.levelup-card[data-rarity="uncommon"],
+.codex-card[data-rarity="uncommon"] {
+  border-color: #047857;
+}
+
+.levelup-card[data-rarity="rare"],
+.codex-card[data-rarity="rare"] {
+  border-color: #6d28d9;
+}
+
+.levelup-card[data-core="true"],
+.codex-card[data-core="true"] {
+  border-color: #0e7490;
+}
+
 .levelup-card:hover,
 .levelup-card:focus-visible {
   border-color: #f4f4f5;
@@ -240,7 +255,7 @@ body {
 
 .levelup-tags {
   display: flex;
-  flex-wrap: nowrap;
+  flex-wrap: wrap;
   gap: 4px;
   flex: 0 0 auto;
 }
@@ -268,6 +283,26 @@ body {
 .levelup-tag[data-tag="lightning"] {
   background: #422006;
   color: #fde047;
+}
+
+.levelup-tag[data-rarity="common"] {
+  background: #27272a;
+  color: #d4d4d8;
+}
+
+.levelup-tag[data-rarity="uncommon"] {
+  background: #064e3b;
+  color: #6ee7b7;
+}
+
+.levelup-tag[data-rarity="rare"] {
+  background: #3b0764;
+  color: #d8b4fe;
+}
+
+.levelup-tag[data-rarity="core"] {
+  background: #164e63;
+  color: #67e8f9;
 }
 
 #codex {

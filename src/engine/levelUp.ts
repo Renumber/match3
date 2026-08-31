@@ -1,10 +1,11 @@
 import {
   LEVEL_UP_CARDS,
   LEVEL_UP_OFFER_COUNT,
+  RARITY_WEIGHT,
   type LevelUpCard,
   type UpgradeTag,
 } from "../data/levelUpCards.ts";
-import { takeWeighted, type Rng } from "./rng.ts";
+import { shuffleInPlace, takeWeighted, type Rng } from "./rng.ts";
 import { UPGRADE_STAT_DEFS, type UpgradeStatKey, type UpgradeStats } from "./upgradeStats.ts";
 
 export const TAG_AFFINITY_BONUS = 1;
@@ -40,7 +41,8 @@ export function offerWeight(
   for (const tag of card.tags) {
     matched += affinity.get(tag) ?? 0;
   }
-  return 1 + TAG_AFFINITY_BONUS * Math.min(TAG_AFFINITY_CAP, matched);
+  const affinityMul = 1 + TAG_AFFINITY_BONUS * Math.min(TAG_AFFINITY_CAP, matched);
+  return RARITY_WEIGHT[card.rarity] * affinityMul;
 }
 
 export function isCardSpent(
@@ -71,12 +73,22 @@ export function offerLevelUpCards(
 ): LevelUpCard[] {
   const available = pool.filter((card) => !isCardSpent(card, ownedIds, stats));
   const affinity = tagAffinity(ownedIds, pool);
-  return takeWeighted(
-    rng,
-    available,
-    Math.min(count, available.length),
-    (card) => offerWeight(card, affinity),
+  const cores = available.filter((card) => card.core);
+  const rest = available.filter((card) => !card.core);
+  const picked: LevelUpCard[] = [];
+  if (cores.length) {
+    picked.push(...takeWeighted(rng, cores, 1, (card) => offerWeight(card, affinity)));
+  }
+  picked.push(
+    ...takeWeighted(
+      rng,
+      rest,
+      Math.min(count - picked.length, rest.length),
+      (card) => offerWeight(card, affinity),
+    ),
   );
+  shuffleInPlace(picked, rng);
+  return picked;
 }
 
 export function summarizeOwnedCards(

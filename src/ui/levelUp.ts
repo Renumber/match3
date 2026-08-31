@@ -1,4 +1,4 @@
-import { UPGRADE_TAG_LABEL, type LevelUpCard } from "../data/levelUpCards.ts";
+import { UPGRADE_TAG_LABEL, cardRarityLabel, type LevelUpCard } from "../data/levelUpCards.ts";
 
 export type LevelUpUi = {
   show: (cards: LevelUpCard[]) => void;
@@ -25,24 +25,29 @@ export function mountLevelUp(onPick: (cardId: string) => void): LevelUpUi {
       button.type = "button";
       button.className = "levelup-card";
       button.dataset.cardId = card.id;
+      button.dataset.rarity = card.rarity;
+      if (card.core) button.dataset.core = "true";
 
       const head = document.createElement("div");
       head.className = "levelup-head";
       const title = document.createElement("strong");
       title.textContent = card.title;
       head.append(title);
-      if (card.tags.length) {
-        const tags = document.createElement("div");
-        tags.className = "levelup-tags";
-        for (const tag of card.tags) {
-          const chip = document.createElement("em");
-          chip.className = "levelup-tag";
-          chip.dataset.tag = tag;
-          chip.textContent = UPGRADE_TAG_LABEL[tag];
-          tags.append(chip);
-        }
-        head.append(tags);
+      const chips = document.createElement("div");
+      chips.className = "levelup-tags";
+      const rarity = document.createElement("em");
+      rarity.className = "levelup-tag";
+      rarity.dataset.rarity = card.core ? "core" : card.rarity;
+      rarity.textContent = cardRarityLabel(card);
+      chips.append(rarity);
+      for (const tag of card.tags) {
+        const chip = document.createElement("em");
+        chip.className = "levelup-tag";
+        chip.dataset.tag = tag;
+        chip.textContent = UPGRADE_TAG_LABEL[tag];
+        chips.append(chip);
       }
+      head.append(chips);
       const desc = document.createElement("span");
       desc.textContent = card.description;
       button.append(head, desc);

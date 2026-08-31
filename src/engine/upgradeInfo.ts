@@ -1,6 +1,7 @@
 import {
   LEVEL_UP_CARDS,
   UPGRADE_TAG_LABEL,
+  cardRarityLabel,
   type LevelUpCard,
   type UpgradeTag,
 } from "../data/levelUpCards.ts";
@@ -109,7 +110,8 @@ export function offerWeightRows(
     const owned = ownedIds.filter((id) => id === card.id).length;
     const spent = isCardSpent(card, ownedIds, stats);
     const weight = spent ? 0 : offerWeight(card, affinity);
-    const parts = [`가중 ${weight}`];
+    const parts = [`${cardRarityLabel(card)}`, `가중 ${weight}`];
+    if (card.core && !spent) parts.push("3택 고정");
     if (owned) parts.push(`보유 ×${owned}`);
     if (spent) parts.push("풀에서 제외");
     return { label: card.title, value: parts.join(" · ") };
@@ -120,6 +122,6 @@ export function affinityRows(ownedIds: string[]): InfoRow[] {
   const affinity = tagAffinity(ownedIds);
   return (Object.keys(UPGRADE_TAG_LABEL) as UpgradeTag[]).map((tag) => ({
     label: UPGRADE_TAG_LABEL[tag],
-    value: `친화도 ${affinity.get(tag) ?? 0} → 가중 ${1 + Math.min(2, affinity.get(tag) ?? 0)}`,
+    value: `친화도 ${affinity.get(tag) ?? 0} → 배율 ×${1 + Math.min(2, affinity.get(tag) ?? 0)}`,
   }));
 }

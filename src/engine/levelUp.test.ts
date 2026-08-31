@@ -56,12 +56,12 @@ describe("level-up offers", () => {
     const chain = LEVEL_UP_CARDS.find((card) => card.id === "chainMove");
     expect(bomb && line && chain).toBeTruthy();
     if (!bomb || !line || !chain) return;
-    expect(offerWeight(bomb, affinity)).toBe(3);
-    expect(offerWeight(line, affinity)).toBe(1);
+    expect(offerWeight(bomb, affinity)).toBe(9);
+    expect(offerWeight(line, affinity)).toBe(6);
     expect(offerWeight(chain, affinity)).toBe(1);
 
     const extraOwned = ["bombEcho", "bombEcho", "bombEcho", "bombEcho"];
-    expect(offerWeight(bomb, tagAffinity(extraOwned))).toBe(3);
+    expect(offerWeight(bomb, tagAffinity(extraOwned))).toBe(9);
 
     const counts = { bombEcho: 0, extraLine: 0 };
     for (let seed = 0; seed < 240; seed++) {
@@ -71,6 +71,35 @@ describe("level-up offers", () => {
     }
     expect(counts.bombEcho).toBeGreaterThan(counts.extraLine);
     expect(counts.extraLine).toBeGreaterThan(20);
+  });
+
+  it("pins core cards into every offer until taken", () => {
+    for (let seed = 0; seed < 40; seed++) {
+      const cards = offerLevelUpCards(mulberry32(seed), []);
+      expect(cards.some((card) => card.id === "autoDetonate")).toBe(true);
+    }
+    for (let seed = 0; seed < 40; seed++) {
+      const cards = offerLevelUpCards(mulberry32(seed), ["autoDetonate"]);
+      expect(cards.some((card) => card.id === "autoDetonate")).toBe(false);
+    }
+  });
+
+  it("offers common cards more often than rare after the core is taken", () => {
+    const counts = { xpBoost: 0, chainMove: 0 };
+    for (let seed = 0; seed < 400; seed++) {
+      const cards = offerLevelUpCards(mulberry32(seed), ["autoDetonate"]);
+      if (cards.some((card) => card.id === "xpBoost")) counts.xpBoost += 1;
+      if (cards.some((card) => card.id === "chainMove")) counts.chainMove += 1;
+    }
+    expect(counts.xpBoost).toBeGreaterThan(counts.chainMove);
+    expect(counts.chainMove).toBeGreaterThan(10);
+  });
+
+  it("marks move cards as rare and autoDetonate as core", () => {
+    expect(LEVEL_UP_CARDS.find((card) => card.id === "chainMove")?.rarity).toBe("rare");
+    expect(LEVEL_UP_CARDS.find((card) => card.id === "moveOnSpecial")?.rarity).toBe("rare");
+    expect(LEVEL_UP_CARDS.find((card) => card.id === "movesOnLevel")?.rarity).toBe("rare");
+    expect(LEVEL_UP_CARDS.find((card) => card.id === "autoDetonate")?.core).toBe(true);
   });
 });
 

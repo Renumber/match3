@@ -1,6 +1,7 @@
 import {
   LEVEL_UP_CARDS,
   UPGRADE_TAG_LABEL,
+  cardRarityLabel,
   type LevelUpCard,
 } from "../data/levelUpCards.ts";
 import {
@@ -51,6 +52,8 @@ function renderRows(title: string, rows: InfoRow[]): HTMLElement {
 function renderCard(card: LevelUpCard, owned: number): HTMLElement {
   const article = document.createElement("article");
   article.className = "codex-card";
+  article.dataset.rarity = card.rarity;
+  if (card.core) article.dataset.core = "true";
   if (owned) article.dataset.owned = "true";
 
   const head = document.createElement("div");
@@ -58,18 +61,21 @@ function renderCard(card: LevelUpCard, owned: number): HTMLElement {
   const title = document.createElement("strong");
   title.textContent = card.title;
   head.append(title);
-  if (card.tags.length) {
-    const tags = document.createElement("div");
-    tags.className = "levelup-tags";
-    for (const tag of card.tags) {
-      const chip = document.createElement("em");
-      chip.className = "levelup-tag";
-      chip.dataset.tag = tag;
-      chip.textContent = UPGRADE_TAG_LABEL[tag];
-      tags.append(chip);
-    }
-    head.append(tags);
+  const chips = document.createElement("div");
+  chips.className = "levelup-tags";
+  const rarity = document.createElement("em");
+  rarity.className = "levelup-tag";
+  rarity.dataset.rarity = card.core ? "core" : card.rarity;
+  rarity.textContent = cardRarityLabel(card);
+  chips.append(rarity);
+  for (const tag of card.tags) {
+    const chip = document.createElement("em");
+    chip.className = "levelup-tag";
+    chip.dataset.tag = tag;
+    chip.textContent = UPGRADE_TAG_LABEL[tag];
+    chips.append(chip);
   }
+  head.append(chips);
 
   const meta = document.createElement("p");
   meta.className = "codex-meta";

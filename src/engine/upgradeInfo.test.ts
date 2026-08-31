@@ -38,6 +38,13 @@ describe("upgradeInfo", () => {
     expect(card?.value).toContain("가중 0");
   });
 
+  it("marks unspent core cards as pinned into the offer", () => {
+    const rows = offerWeightRows([]);
+    const card = rows.find((row) => row.label === "자동 점화");
+    expect(card?.value).toContain("핵심");
+    expect(card?.value).toContain("3택 고정");
+  });
+
   it("prints numeric effect lines for a card", () => {
     const card = LEVEL_UP_CARDS.find((item) => item.id === "specialSpawnChance");
     expect(card).toBeDefined();
