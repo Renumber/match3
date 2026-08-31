@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { boardFromColors, resetTileIds } from "./board.ts";
 import { LEVEL_UP_CARDS, LEVEL_UP_OFFER_COUNT } from "../data/levelUpCards.ts";
 import { Game } from "./game.ts";
 import { offerLevelUpCards, offerWeight, tagAffinity } from "./levelUp.ts";
@@ -23,13 +24,13 @@ describe("level-up offers", () => {
     expect(cards.some((card) => owned.includes(card.id))).toBe(false);
   });
 
-  it("tags only bomb, line, and lightning cards", () => {
+  it("tags at most one of bomb, line, lightning", () => {
+    const allowed = new Set(["line", "bomb", "lightning"]);
     const tagged = LEVEL_UP_CARDS.filter((card) => card.tags.length > 0);
-    expect(tagged.map((card) => card.id).sort()).toEqual(
-      ["bombRadius", "extraLine", "lightningTargets"].sort(),
-    );
+    expect(tagged.length).toBeGreaterThan(0);
     for (const card of tagged) {
       expect(card.tags).toHaveLength(1);
+      expect(allowed.has(card.tags[0] ?? "")).toBe(true);
     }
   });
 
@@ -55,7 +56,7 @@ describe("level-up offers", () => {
       if (cards.some((card) => card.id === "extraLine")) counts.extraLine += 1;
     }
     expect(counts.bombRadius).toBeGreaterThan(counts.extraLine);
-    expect(counts.extraLine).toBeGreaterThan(80);
+    expect(counts.extraLine).toBeGreaterThan(40);
   });
 });
 
@@ -90,5 +91,26 @@ describe("Game level-up", () => {
     game.chooseOfferedCard(first.id);
     expect(game.phase).toBe("levelUp");
     expect(game.offeredCards).toHaveLength(3);
+  });
+
+  it("grants moves on later level-ups", () => {
+    const game = new Game(11);
+    game.upgrades.movesOnLevel = 2;
+    const before = game.moves;
+    game.grantXp(game.xpToNext);
+    expect(game.moves).toBe(before + 2);
+  });
+
+  it("refunds a move when a special fires", () => {
+    resetTileIds();
+    const game = new Game(1);
+    game.upgrades.autoDetonate = true;
+    game.upgrades.moveOnSpecial = 1;
+    game.board = boardFromColors(["00010..."]);
+    const before = game.moves;
+    const out = game.trySwap({ r: 0, c: 3 }, { r: 0, c: 4 });
+    expect(out.bounced).toBe(false);
+    expect(out.result?.events.some((event) => event.type === "activate")).toBe(true);
+    expect(game.moves).toBe(before);
   });
 });

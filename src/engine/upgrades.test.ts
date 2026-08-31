@@ -1,7 +1,13 @@
 import { describe, expect, it } from "vitest";
-import { applyUpgradeEffect, defaultUpgradeStats } from "./upgrades.ts";
+import { applyUpgradeEffect, defaultUpgradeStats, UPGRADE_STAT_DEFS, xpFromClears } from "./upgrades.ts";
 
 describe("applyUpgradeEffect", () => {
+  it("builds defaults from the stat schema", () => {
+    const stats = defaultUpgradeStats();
+    expect(Object.keys(stats).sort()).toEqual(Object.keys(UPGRADE_STAT_DEFS).sort());
+    expect(stats.bombRadius).toBe(UPGRADE_STAT_DEFS.bombRadius.default);
+    expect(stats.autoDetonate).toBe(false);
+  });
   it("stacks numeric bonuses", () => {
     const stats = defaultUpgradeStats();
     applyUpgradeEffect(stats, { bombRadius: 1, extraLines: 1, lightningTargets: 2 });
@@ -18,5 +24,31 @@ describe("applyUpgradeEffect", () => {
     expect(stats.autoDetonate).toBe(true);
     expect(stats.chainMoveThreshold).toBe(15);
     expect(stats.chainMoveBonus).toBe(1);
+  });
+
+  it("stacks economy bonuses and caps xp", () => {
+    const stats = defaultUpgradeStats();
+    applyUpgradeEffect(stats, { moveOnSpecial: 1, movesOnLevel: 2, xpBonus: 0.25 });
+    applyUpgradeEffect(stats, { moveOnSpecial: 1, movesOnLevel: 2, xpBonus: 0.25 });
+    applyUpgradeEffect(stats, { xpBonus: 1 });
+    expect(stats.moveOnSpecial).toBe(2);
+    expect(stats.movesOnLevel).toBe(4);
+    expect(stats.xpBonus).toBe(1);
+  });
+
+  it("turns on cross shapes", () => {
+    const stats = defaultUpgradeStats();
+    applyUpgradeEffect(stats, { crossLine: true, bombCross: true });
+    expect(stats.crossLine).toBe(true);
+    expect(stats.bombCross).toBe(true);
+  });
+
+  it("scales xp from clears", () => {
+    const stats = defaultUpgradeStats();
+    expect(xpFromClears(3, stats)).toBe(3);
+    stats.xpBonus = 0.25;
+    expect(xpFromClears(3, stats)).toBe(4);
+    stats.xpBonus = 1;
+    expect(xpFromClears(3, stats)).toBe(6);
   });
 });

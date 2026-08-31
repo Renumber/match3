@@ -1,6 +1,4 @@
 import {
-  COLS,
-  ROWS,
   type MatchKind,
   type Pos,
   type Special,
@@ -11,10 +9,11 @@ import {
 import { getTile, makeTile, setTile } from "./board.ts";
 import { findMatches } from "./match.ts";
 import { settleBoard } from "./gravity.ts";
-import { cellsForSpecial, specialFromThreeMatch, spreadIndices } from "./specials.ts";
+import { cellsForSpecial, specialActivateFx } from "./specials.ts";
 import type { GameEvent, ResolveResult } from "./events.ts";
 import type { Rng } from "./rng.ts";
-import { defaultUpgradeStats, type UpgradeStats } from "./upgrades.ts";
+import { shouldAutoDetonate, spawnFromThreeMatch } from "./upgradeRules.ts";
+import { defaultUpgradeStats, type UpgradeStats } from "./upgradeStats.ts";
 
 const MAX_STEPS = 80;
 
@@ -43,17 +42,7 @@ function activateSpecials(
     seenActivate.add(ak);
     fxEvents.push({ type: "activate", at: next.at, special: next.special });
     addCell(clearSet, toClear, next.at);
-    if (next.special === "lineH") {
-      for (const index of spreadIndices(next.at.r, stats.extraLines, ROWS)) {
-        fxEvents.push({ type: "fxLine", dir: "h", index });
-      }
-    }
-    if (next.special === "lineV") {
-      for (const index of spreadIndices(next.at.c, stats.extraLines, COLS)) {
-        fxEvents.push({ type: "fxLine", dir: "v", index });
-      }
-    }
-    if (next.special === "bomb") fxEvents.push({ type: "fxBomb", at: next.at });
+    fxEvents.push(...specialActivateFx(next.special, next.at, stats));
     const struck = cellsForSpecial(next.special, next.at, board, rng, stats);
     for (const cell of struck) {
       if (next.special === "lightning") {
@@ -78,8 +67,7 @@ function spawnSpecialForMatch(
 ): Special {
   const spawnSpecial = specialFromMatch(matchKind);
   if (spawnSpecial !== "none") return spawnSpecial;
-  if (stats.specialSpawnChance <= 0 || rng() >= stats.specialSpawnChance) return "none";
-  return specialFromThreeMatch(cells, origin, rng);
+  return spawnFromThreeMatch(cells, origin, rng, stats);
 }
 
 export function resolveBoard(
@@ -143,7 +131,7 @@ export function resolveBoard(
       events.push({ type: "spawn", at: spawn.at, special: spawn.special, tile });
     }
 
-    if (stats.autoDetonate && spawns.length) {
+    if (shouldAutoDetonate(stats) && spawns.length) {
       const extraClear: Pos[] = [];
       const extraSet = new Set<string>();
       const detonateQueue = spawns.map((spawn) => ({ at: spawn.at, special: spawn.special }));

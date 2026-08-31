@@ -87,6 +87,20 @@ describe("resolveBoard", () => {
     expect(result.events.some((e) => e.type === "activate")).toBe(true);
     expect(specialsOn(board)).toEqual([]);
   });
+
+  it("draws a cross when a line auto-detonates", () => {
+    const board = grid(["0000...."]);
+    const stats = defaultUpgradeStats();
+    stats.autoDetonate = true;
+    stats.crossLine = true;
+    const result = resolveBoard(board, mulberry32(1), { r: 0, c: 3 }, stats);
+    expect(result.events.some((e) => e.type === "fxLine" && e.dir === "h" && e.index === 0)).toBe(
+      true,
+    );
+    expect(result.events.some((e) => e.type === "fxLine" && e.dir === "v" && e.index === 3)).toBe(
+      true,
+    );
+  });
 });
 
 function specialsOn(board: (Tile | null)[][]) {

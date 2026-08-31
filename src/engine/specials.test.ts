@@ -41,6 +41,26 @@ describe("cellsForSpecial upgrades", () => {
     );
     expect(cells).toHaveLength(4);
   });
+
+  it("adds a perpendicular line", () => {
+    const stats = defaultUpgradeStats();
+    stats.crossLine = true;
+    const cells = cellsForSpecial("lineH", { r: 2, c: 3 }, emptyBoard(), mulberry32(1), stats);
+    const rows = new Set(cells.map((p) => p.r));
+    const cols = new Set(cells.map((p) => p.c));
+    expect(rows.has(2)).toBe(true);
+    expect(cols.has(3)).toBe(true);
+    expect(cells).toHaveLength(15);
+  });
+
+  it("adds a plus through the bomb", () => {
+    const stats = defaultUpgradeStats();
+    stats.bombCross = true;
+    const cells = cellsForSpecial("bomb", { r: 3, c: 3 }, emptyBoard(), mulberry32(1), stats);
+    expect(cells).toHaveLength(19);
+    expect(cells.some((p) => p.r === 3 && p.c === 0)).toBe(true);
+    expect(cells.some((p) => p.r === 0 && p.c === 3)).toBe(true);
+  });
 });
 
 describe("specialFromThreeMatch", () => {

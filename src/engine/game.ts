@@ -6,7 +6,12 @@ import { isAdjacent, type Pos, type Tile } from "./types.ts";
 import type { ResolveResult } from "./events.ts";
 import type { LevelUpCard } from "../data/levelUpCards.ts";
 import { addXp, createRun, type RunProgress } from "./run.ts";
-import { applyUpgradeEffect, defaultUpgradeStats, type UpgradeStats } from "./upgrades.ts";
+import {
+  extraMovesAfterResolve,
+  extraMovesOnLevel,
+  xpFromClears,
+} from "./upgradeRules.ts";
+import { applyUpgradeEffect, defaultUpgradeStats, type UpgradeStats } from "./upgradeStats.ts";
 import { offerLevelUpCards } from "./levelUp.ts";
 
 export type GamePhase = "idle" | "levelUp";
@@ -65,7 +70,10 @@ export class Game {
   }
 
   grantXp(amount: number): void {
+    const before = this.run.level;
     addXp(this.run, amount);
+    const gained = this.run.level - before;
+    if (gained > 0) this.run.moves += extraMovesOnLevel(gained, this.upgrades);
     this.syncLevelUp();
   }
 
@@ -102,13 +110,8 @@ export class Game {
     this.run.moves -= 1;
     this.lastChain = result.chain;
     this.totalCleared += result.cleared;
-    this.grantXp(result.cleared);
-    if (
-      this.upgrades.chainMoveThreshold > 0 &&
-      result.chain >= this.upgrades.chainMoveThreshold
-    ) {
-      this.run.moves += this.upgrades.chainMoveBonus;
-    }
+    this.grantXp(xpFromClears(result.cleared, this.upgrades));
+    this.run.moves += extraMovesAfterResolve(result, this.upgrades);
     return {
       bounced: false,
       result: {
