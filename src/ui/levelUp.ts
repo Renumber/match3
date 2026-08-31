@@ -26,11 +26,11 @@ export function mountLevelUp(onPick: (cardId: string) => void): LevelUpUi {
       button.className = "levelup-card";
       button.dataset.cardId = card.id;
 
+      const head = document.createElement("div");
+      head.className = "levelup-head";
       const title = document.createElement("strong");
       title.textContent = card.title;
-      const desc = document.createElement("span");
-      desc.textContent = card.description;
-      button.append(title, desc);
+      head.append(title);
       if (card.tags.length) {
         const tags = document.createElement("div");
         tags.className = "levelup-tags";
@@ -41,8 +41,11 @@ export function mountLevelUp(onPick: (cardId: string) => void): LevelUpUi {
           chip.textContent = UPGRADE_TAG_LABEL[tag];
           tags.append(chip);
         }
-        button.append(tags);
+        head.append(tags);
       }
+      const desc = document.createElement("span");
+      desc.textContent = card.description;
+      button.append(head, desc);
       button.addEventListener("click", () => onPick(card.id));
       list.append(button);
     }

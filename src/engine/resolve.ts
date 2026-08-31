@@ -42,6 +42,7 @@ function activateSpecials(
     if (seenActivate.has(ak)) continue;
     seenActivate.add(ak);
     fxEvents.push({ type: "activate", at: next.at, special: next.special });
+    addCell(clearSet, toClear, next.at);
     if (next.special === "lineH") {
       for (const index of spreadIndices(next.at.r, stats.extraLines, ROWS)) {
         fxEvents.push({ type: "fxLine", dir: "h", index });

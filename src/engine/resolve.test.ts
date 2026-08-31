@@ -1,8 +1,8 @@
 import { describe, expect, it } from "vitest";
-import { boardFromColors, resetTileIds } from "./board.ts";
+import { boardFromColors, getTile, resetTileIds } from "./board.ts";
 import { mulberry32 } from "./rng.ts";
 import { resolveBoard } from "./resolve.ts";
-import { COLS, ROWS } from "./types.ts";
+import { COLS, ROWS, type Tile } from "./types.ts";
 import { defaultUpgradeStats } from "./upgrades.ts";
 
 function grid(lines: string[]) {
@@ -60,5 +60,42 @@ describe("resolveBoard", () => {
     expect(
       result.events.some((e) => e.type === "fxLine" && e.dir === "h" && e.index === 0),
     ).toBe(true);
+    expect(specialsOn(board)).toEqual([]);
+  });
+
+  it("auto-detonates a spawned lightning and consumes it", () => {
+    const board = grid(["00......", "00......"]);
+    const stats = defaultUpgradeStats();
+    stats.autoDetonate = true;
+    const result = resolveBoard(board, mulberry32(1), { r: 0, c: 0 }, stats);
+    expect(result.events.some((e) => e.type === "spawn" && e.special === "lightning")).toBe(
+      true,
+    );
+    expect(result.events.some((e) => e.type === "activate" && e.special === "lightning")).toBe(
+      true,
+    );
+    expect(specialsOn(board)).toEqual([]);
+  });
+
+  it("auto-detonates three-match specials from spawn chance", () => {
+    const board = grid(["000....."]);
+    const stats = defaultUpgradeStats();
+    stats.autoDetonate = true;
+    stats.specialSpawnChance = 1;
+    const result = resolveBoard(board, mulberry32(1), { r: 0, c: 2 }, stats);
+    expect(result.events.some((e) => e.type === "spawn")).toBe(true);
+    expect(result.events.some((e) => e.type === "activate")).toBe(true);
+    expect(specialsOn(board)).toEqual([]);
   });
 });
+
+function specialsOn(board: (Tile | null)[][]) {
+  const found: string[] = [];
+  for (let r = 0; r < ROWS; r++) {
+    for (let c = 0; c < COLS; c++) {
+      const tile = getTile(board, { r, c });
+      if (tile && tile.special !== "none") found.push(`${tile.special}@${r},${c}`);
+    }
+  }
+  return found;
+}
