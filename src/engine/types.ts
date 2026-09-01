@@ -20,6 +20,7 @@ export type Tile = {
   plain?: boolean;
   echoDepth?: number;
   blocker?: boolean;
+  hits?: number;
 };
 
 export function isBlocker(tile: Tile | null | undefined): boolean {

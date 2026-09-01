@@ -22,6 +22,8 @@ export type GameEvent =
   | { type: "fxBomb"; at: Pos }
   | { type: "strike"; from: Pos; to: Pos }
   | { type: "clear"; cells: Pos[] }
+  | { type: "crack"; at: Pos; hits: number }
+  | { type: "bossHit"; amount: number }
   | { type: "spawn"; at: Pos; special: Special; tile: Tile }
   | { type: "fall"; moves: FallMove[] }
   | { type: "dropIn"; drops: DropIn[] };

@@ -1,5 +1,4 @@
 import { describe, expect, it } from "vitest";
-import { applyBossHit } from "./boss.ts";
 import {
   addXp,
   createRun,
@@ -44,44 +43,11 @@ describe("run xp", () => {
 });
 
 describe("run boss", () => {
-  it("starts at stage 1 hp and armor", () => {
+  it("starts at stage 1 hp and plate hits", () => {
     const run = createRun();
     expect(run.bossHp).toBe(STAGE1_BOSS_HP);
     expect(run.bossMaxHp).toBe(STAGE1_BOSS_HP);
     expect(run.bossArmor).toBe(STAGE1_BOSS_ARMOR);
     expect(run.bossName).toBe("골렘");
-  });
-
-  it("subtracts remaining armor from cleared tiles", () => {
-    const run = createRun();
-    run.bossArmor = 4;
-    expect(applyBossHit(run, { cleared: 12 })).toBe(8);
-    expect(run.bossHp).toBe(STAGE1_BOSS_HP - 8);
-    expect(run.bossArmor).toBe(4);
-  });
-
-  it("cracks armor from special activates before absorbing", () => {
-    const run = createRun();
-    run.bossArmor = 4;
-    expect(applyBossHit(run, { cleared: 12, activates: 3 })).toBe(11);
-    expect(run.bossArmor).toBe(1);
-    expect(run.bossHp).toBe(STAGE1_BOSS_HP - 11);
-  });
-
-  it("blocks a hit that does not beat armor", () => {
-    const run = createRun();
-    run.bossArmor = 8;
-    expect(applyBossHit(run, { cleared: 3 })).toBe(0);
-    expect(run.bossHp).toBe(STAGE1_BOSS_HP);
-    expect(run.bossArmor).toBe(8);
-  });
-
-  it("clamps overkill to remaining hp", () => {
-    const run = createRun();
-    run.bossHp = 4;
-    run.bossArmor = 0;
-    expect(applyBossHit(run, { cleared: 10 })).toBe(4);
-    expect(run.bossHp).toBe(0);
-    expect(applyBossHit(run, { cleared: 3 })).toBe(0);
   });
 });

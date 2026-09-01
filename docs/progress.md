@@ -34,7 +34,7 @@
 | 8×8, 색 5, Moves 40, 인접 스왑, 매치 없으면 튕김. 특수끼리 스왑은 매치 없어도 발동 | Bonus Chain, Final Burst, Critical Mass |
 | 일반 스왑만 Move -1. 교착이면 셔플 | `fsm.ts` 파일. Bonus 단계는 없음 |
 | XP → 레벨업 3택 | |
-| 보스 골렘 HP 300, 갑옷 4, 중앙 2×2 핵. 피해 = 지운 타일 − 갑옷. 특수/핵이 갑옷 −1. 처치 승 / Moves 0 패 | |
+| 보스 골렘 HP 300, 갑옷 판 4장×3타. 파괴 시 50 피해 후 다른 칸 재생성. 매치는 XP만. 처치 승 / Moves 0 패 | |
 
 ### 엔진 `src/engine/`
 
@@ -43,7 +43,7 @@
 - resolve: 매치 → 생성 → 발동 → 중력. 범위 안 특수는 Activate. 특수끼리 스왑은 `combo.ts` 레시피. 자동 점화도 직교 인접 특수에 같은 레시피. Bomb+Lightning / Line+Lightning은 번개 타격 칸에서 서브 폭탄·라인 발동. 스텝 상한 80.
 - 업글은 `upgradeStats` 숫자/플래그 + `upgradeRules` 훅. `game` / `resolve` / `specials`에 카드별 `if` 없음.
 - 보스는 `data/bosses.ts` 기믹 목록 + `engine/boss.ts` 적용. `game`에 보스명 `if` 없음. 새 기믹은 def 추가 + `boss.ts` case.
-- 런: Moves 40, 보스 골렘 HP 300 / 갑옷 4 / 중앙 2×2 핵. 특수·핵이 갑옷을 깨고, 지운 타일 − 갑옷 = 피해. 페이즈 `idle` / `levelUp` / `win` / `lose`. 교착 셔플.
+- 런: Moves 40, 보스 골렘 HP 300 / 갑옷 판 4장(3타, 파괴 50, 다른 칸 재생성). 매치는 XP만. 페이즈 `idle` / `levelUp` / `win` / `lose`. 교착 셔플.
 - vitest: match, gravity, resolve, specials, combo, game, run, boss, levelUp, upgrades, upgradeRules, upgradeInfo, rng.
 
 ### 보드 / HUD
@@ -77,6 +77,11 @@
 ---
 
 ## 로그
+
+### 2026-09-01 — 골렘 갑옷 판
+
+- 숫자 갑옷이면 매치만 해도 HP가 녹아서 너무 쉬웠다.
+- 보드 위 갑옷 4장, 3타에 파괴, 파괴당 50 피해, 다른 칸에 다시 깐다. 매치는 XP만.
 
 ### 2026-09-01 — 보스 기믹 카탈로그
 

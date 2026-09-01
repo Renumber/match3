@@ -1,11 +1,23 @@
 import { describe, expect, it } from "vitest";
-import { STAGE1_BOSS } from "../data/bosses.ts";
+import { STAGE1_BOSS, type BossDef } from "../data/bosses.ts";
 import { getTile, makeTile, resetTileIds, setTile } from "./board.ts";
 import { placeBossTiles } from "./boss.ts";
 import { Game } from "./game.ts";
 import { hasMatch, hasPossibleSwap } from "./match.ts";
 import { STARTING_MOVES, STAGE1_BOSS_ARMOR } from "./run.ts";
-import { COLS, ROWS, type Tile } from "./types.ts";
+import { COLS, ROWS, type Pos, type Tile } from "./types.ts";
+
+const BARE: BossDef = { id: "bare", name: "맨몸", hp: 80, gimmicks: [] };
+
+function plateCells(board: (Tile | null)[][]): Pos[] {
+  const cells: Pos[] = [];
+  for (let r = 0; r < ROWS; r++) {
+    for (let c = 0; c < COLS; c++) {
+      if (getTile(board, { r, c })?.blocker) cells.push({ r, c });
+    }
+  }
+  return cells;
+}
 
 function noMatchGrid() {
   resetTileIds();
@@ -41,24 +53,48 @@ describe("Game.trySwap special combo", () => {
     expect(out.result?.events.some((e) => e.type === "activate")).toBe(true);
   });
 
-  it("rejects swaps into a golem core", () => {
+  it("rejects swaps into a golem plate", () => {
     const game = new Game(1);
-    const core = { r: 3, c: 3 };
-    expect(getTile(game.board, core)?.blocker).toBe(true);
-    const out = game.trySwap(core, { r: 3, c: 2 });
+    const plate = { r: 3, c: 3 };
+    expect(getTile(game.board, plate)?.blocker).toBe(true);
+    const out = game.trySwap(plate, { r: 3, c: 2 });
     expect(out.bounced).toBe(true);
-    expect(getTile(game.board, core)?.blocker).toBe(true);
+    expect(getTile(game.board, plate)?.blocker).toBe(true);
   });
 
-  it("breaks golem cores with a special", () => {
+  it("chips golem plates without destroying them on one hit", () => {
     const game = new Game(1);
     game.board = noMatchGrid();
     placeBossTiles(game.board, STAGE1_BOSS);
-    setTile(game.board, { r: 3, c: 1 }, makeTile(0, "lineH"));
-    setTile(game.board, { r: 3, c: 2 }, makeTile(1, "lightning"));
-    game.trySwap({ r: 3, c: 1 }, { r: 3, c: 2 });
-    expect(getTile(game.board, { r: 3, c: 3 })?.blocker).toBeFalsy();
-    expect(getTile(game.board, { r: 3, c: 4 })?.blocker).toBeFalsy();
+    setTile(game.board, { r: 1, c: 2 }, makeTile(0));
+    setTile(game.board, { r: 2, c: 2 }, makeTile(0));
+    setTile(game.board, { r: 3, c: 2 }, makeTile(1));
+    setTile(game.board, { r: 4, c: 2 }, makeTile(0, "lineH"));
+    const hp = game.bossHp;
+    game.trySwap({ r: 3, c: 2 }, { r: 4, c: 2 });
+    expect(plateCells(game.board)).toHaveLength(4);
+    expect(getTile(game.board, { r: 3, c: 3 })?.hits).toBe(2);
+    expect(game.bossHp).toBe(hp);
+    expect(game.lastDamage).toBe(0);
+  });
+
+  it("breaks a last-hit plate, deals damage, and respawns elsewhere", () => {
+    const game = new Game(1);
+    game.board = noMatchGrid();
+    placeBossTiles(game.board, STAGE1_BOSS);
+    const target = { r: 3, c: 3 };
+    const tile = getTile(game.board, target);
+    if (tile) tile.hits = 1;
+    setTile(game.board, { r: 1, c: 2 }, makeTile(0));
+    setTile(game.board, { r: 2, c: 2 }, makeTile(0));
+    setTile(game.board, { r: 3, c: 2 }, makeTile(1));
+    setTile(game.board, { r: 4, c: 2 }, makeTile(0, "lineH"));
+    const hp = game.bossHp;
+    game.trySwap({ r: 3, c: 2 }, { r: 4, c: 2 });
+    expect(game.bossHp).toBe(hp - 50);
+    expect(game.lastDamage).toBe(50);
+    expect(plateCells(game.board)).toHaveLength(4);
+    expect(getTile(game.board, target)?.blocker).toBeFalsy();
   });
 
   it("still bounces special into a normal tile with no match", () => {
@@ -76,9 +112,8 @@ describe("Game.trySwap special combo", () => {
 });
 
 describe("Game boss", () => {
-  it("deals leftover damage after armor", () => {
-    const game = new Game(1);
-    game.run.bossArmor = 0;
+  it("deals full clear damage when the boss has no plates", () => {
+    const game = new Game(1, BARE);
     threeMatchSwap(game);
     const hp = game.bossHp;
     const out = game.trySwap({ r: 0, c: 2 }, { r: 0, c: 3 });
@@ -88,35 +123,39 @@ describe("Game boss", () => {
     expect(game.lastDamage).toBe(out.result?.cleared);
   });
 
-  it("blocks a small match while armor holds", () => {
+  it("ignores match clears while plates are up", () => {
     const game = new Game(1);
-    game.run.bossArmor = 40;
-    threeMatchSwap(game);
+    game.board = noMatchGrid();
+    placeBossTiles(game.board, STAGE1_BOSS);
+    setTile(game.board, { r: 0, c: 0 }, makeTile(0));
+    setTile(game.board, { r: 0, c: 1 }, makeTile(0));
+    setTile(game.board, { r: 0, c: 2 }, makeTile(1));
+    setTile(game.board, { r: 0, c: 3 }, makeTile(0));
     const hp = game.bossHp;
+    const armor = game.bossArmor;
     game.trySwap({ r: 0, c: 2 }, { r: 0, c: 3 });
     expect(game.bossHp).toBe(hp);
     expect(game.lastDamage).toBe(0);
-    expect(game.bossArmor).toBe(40);
+    expect(game.bossArmor).toBe(armor);
   });
 
-  it("cracks armor when specials activate", () => {
+  it("chips plate hits when specials connect", () => {
     const game = new Game(1);
-    game.run.bossArmor = 2;
     game.board = noMatchGrid();
-    setTile(game.board, { r: 3, c: 3 }, makeTile(0, "bomb"));
-    setTile(game.board, { r: 3, c: 4 }, makeTile(1, "lightning"));
-    const hp = game.bossHp;
+    placeBossTiles(game.board, STAGE1_BOSS);
+    setTile(game.board, { r: 1, c: 2 }, makeTile(0));
+    setTile(game.board, { r: 2, c: 2 }, makeTile(0));
+    setTile(game.board, { r: 3, c: 2 }, makeTile(1));
+    setTile(game.board, { r: 4, c: 2 }, makeTile(0, "lineH"));
     const armor = game.bossArmor;
-    game.trySwap({ r: 3, c: 3 }, { r: 3, c: 4 });
+    game.trySwap({ r: 3, c: 2 }, { r: 4, c: 2 });
     expect(game.bossArmor).toBeLessThan(armor);
-    expect(game.bossHp).toBeLessThan(hp);
   });
 
   it("wins when the boss dies, even on the last move", () => {
-    const game = new Game(1);
+    const game = new Game(1, BARE);
     game.run.moves = 1;
     game.run.bossHp = 3;
-    game.run.bossArmor = 0;
     threeMatchSwap(game);
     game.trySwap({ r: 0, c: 2 }, { r: 0, c: 3 });
     expect(game.bossHp).toBe(0);
@@ -125,9 +164,8 @@ describe("Game boss", () => {
   });
 
   it("skips leftover level-ups after a kill", () => {
-    const game = new Game(1);
+    const game = new Game(1, BARE);
     game.run.bossHp = 3;
-    game.run.bossArmor = 0;
     game.run.xp = game.xpToNext - 1;
     threeMatchSwap(game);
     game.trySwap({ r: 0, c: 2 }, { r: 0, c: 3 });

@@ -1,6 +1,6 @@
 import { bothSpecials } from "./combo.ts";
 import { createFilledBoard, getTile, swapTiles } from "./board.ts";
-import { applyResolveToBoss, placeBossTiles } from "./boss.ts";
+import { applyResolveToBoss, armorHitsOnBoard, placeBossTiles, platePositions, refillBossTiles } from "./boss.ts";
 import { hasMatch, hasPossibleSwap, shuffleUntilPlayable } from "./match.ts";
 import { mulberry32, type Rng } from "./rng.ts";
 import { resolveBoard } from "./resolve.ts";
@@ -91,7 +91,7 @@ export class Game {
   }
 
   get bossArmor(): number {
-    return this.run.bossArmor;
+    return armorHitsOnBoard(this.board);
   }
 
   get bossArmorMax(): number {
@@ -144,6 +144,7 @@ export class Game {
       return { bounced: true, result: null };
     }
     const specialSwap = bothSpecials(tileA.special, tileB.special);
+    const beforePlates = platePositions(this.board);
 
     swapTiles(this.board, a, b);
     if (!specialSwap && !hasMatch(this.board)) {
@@ -162,18 +163,22 @@ export class Game {
       this.upgrades,
       specialSwap ? { a, b } : undefined,
     );
+    const destroyedPlates = beforePlates.filter((at) => !getTile(this.board, at)?.blocker);
     this.run.moves -= 1;
     this.lastChain = result.chain;
     this.totalCleared += result.cleared;
     this.lastDamage = applyResolveToBoss(this.run, result);
+    refillBossTiles(this.board, this.rng, this.boss, destroyedPlates);
     this.grantXp(xpFromClears(result.cleared, this.upgrades));
     this.run.moves += extraMovesAfterResolve(result, this.upgrades);
     this.syncPhase();
+    const extra: ResolveResult["events"] = [];
+    if (this.lastDamage > 0) extra.push({ type: "bossHit", amount: this.lastDamage });
     return {
       bounced: false,
       result: {
         ...result,
-        events: [{ type: "swap", a, b }, ...result.events],
+        events: [{ type: "swap", a, b }, ...result.events, ...extra],
       },
     };
   }

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { boardFromColors, getTile, makeTile, resetTileIds, setTile } from "./board.ts";
+import { boardFromColors, getTile, makeBlocker, makeTile, resetTileIds, setTile } from "./board.ts";
 import { mulberry32 } from "./rng.ts";
 import type { ResolveResult } from "./events.ts";
 import { resolveBoard } from "./resolve.ts";
@@ -407,6 +407,30 @@ describe("resolveBoard", () => {
     expect(lightningActivates.length).toBe(2);
     const bombActivates = result.events.filter((e) => e.type === "activate" && e.special === "bomb");
     expect(bombActivates).toHaveLength(2);
+  });
+
+  it("chips a multi-hit blocker instead of clearing it", () => {
+    const board = noMatchGrid();
+    setTile(board, { r: 0, c: 0 }, makeTile(0, "lineH"));
+    setTile(board, { r: 0, c: 1 }, makeTile(0));
+    setTile(board, { r: 0, c: 2 }, makeTile(0));
+    setTile(board, { r: 0, c: 5 }, makeBlocker(3));
+    const result = resolveBoard(board, mulberry32(1), { r: 0, c: 0 });
+    expect(getTile(board, { r: 0, c: 5 })?.blocker).toBe(true);
+    expect(getTile(board, { r: 0, c: 5 })?.hits).toBe(2);
+    expect(result.blockersCleared).toBe(0);
+    expect(result.events.some((e) => e.type === "crack")).toBe(true);
+  });
+
+  it("clears a blocker on its last hit", () => {
+    const board = noMatchGrid();
+    setTile(board, { r: 0, c: 0 }, makeTile(0, "lineH"));
+    setTile(board, { r: 0, c: 1 }, makeTile(0));
+    setTile(board, { r: 0, c: 2 }, makeTile(0));
+    setTile(board, { r: 0, c: 5 }, makeBlocker(1));
+    const result = resolveBoard(board, mulberry32(1), { r: 0, c: 0 });
+    expect(getTile(board, { r: 0, c: 5 })?.blocker).toBeFalsy();
+    expect(result.blockersCleared).toBe(1);
   });
 });
 

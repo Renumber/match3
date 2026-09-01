@@ -190,6 +190,23 @@ export function mountBoard(app: Application, game: Game, hud: HudHooks): BoardVi
         }
         case "activate":
           break;
+        case "crack": {
+          const item = occupancy.get(posKey(event.at));
+          if (item) {
+            item.tile.hits = event.hits;
+            drawTile(item.g, item.tile, cellSize, false);
+            await animate(app, 90, (t) => {
+              const s = 1 + 0.08 * Math.sin(t * Math.PI);
+              item.g.scale.set(s);
+            });
+            item.g.scale.set(1);
+          }
+          break;
+        }
+        case "bossHit":
+          shownHp = Math.max(game.bossHp, shownHp - event.amount);
+          hud.setBossHp?.(shownHp, game.bossMaxHp);
+          break;
         case "clear": {
           const items = event.cells
             .map((p) => occupancy.get(posKey(p)))
@@ -208,8 +225,6 @@ export function mountBoard(app: Application, game: Game, hud: HudHooks): BoardVi
           }
           shownCleared += event.cells.length;
           hud.setCleared(shownCleared);
-          shownHp = Math.max(game.bossHp, shownHp - event.cells.length);
-          hud.setBossHp?.(shownHp, game.bossMaxHp);
           break;
         }
         case "spawn": {
@@ -349,13 +364,25 @@ export function mountBoard(app: Application, game: Game, hud: HudHooks): BoardVi
 function drawTile(g: Graphics, tile: Tile | null, size: number, selected: boolean): void {
   g.clear();
   if (tile?.blocker) {
-    g.roundRect(0, 0, size, size, 10).fill(0x57534e);
+    const hits = tile.hits ?? 1;
+    const fill = hits >= 3 ? 0x57534e : hits === 2 ? 0x44403c : 0x292524;
+    g.roundRect(0, 0, size, size, 10).fill(fill);
     const m = size * 0.22;
     g.roundRect(m, m, size - m * 2, size - m * 2, 4).stroke({ width: 2, color: 0xa8a29e });
     g.moveTo(size * 0.3, size * 0.55);
     g.lineTo(size * 0.48, size * 0.38);
     g.lineTo(size * 0.7, size * 0.62);
     g.stroke({ width: 2, color: 0x292524 });
+    if (hits <= 2) {
+      g.moveTo(size * 0.22, size * 0.28);
+      g.lineTo(size * 0.78, size * 0.72);
+      g.stroke({ width: 2, color: 0xd6d3d1 });
+    }
+    if (hits <= 1) {
+      g.moveTo(size * 0.78, size * 0.28);
+      g.lineTo(size * 0.22, size * 0.72);
+      g.stroke({ width: 2, color: 0xd6d3d1 });
+    }
     if (selected) {
       g.roundRect(2, 2, size - 4, size - 4, 8).stroke({ width: 3, color: 0xffffff });
     }

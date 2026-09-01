@@ -44,7 +44,22 @@ type EchoJob = {
 
 const MAX_ECHO_WAVES = 8;
 
-function addCell(set: Set<string>, cells: Pos[], p: Pos): void {
+function addCell(
+  board: (Tile | null)[][],
+  set: Set<string>,
+  cells: Pos[],
+  p: Pos,
+  extraEvents?: GameEvent[],
+): void {
+  const tile = getTile(board, p);
+  if (tile?.blocker) {
+    const hits = tile.hits ?? 1;
+    if (hits > 1) {
+      tile.hits = hits - 1;
+      extraEvents?.push({ type: "crack", at: { r: p.r, c: p.c }, hits: tile.hits });
+      return;
+    }
+  }
   const k = posKey(p);
   if (set.has(k)) return;
   set.add(k);
@@ -75,7 +90,7 @@ function activateSpecials(
       : (next.statsOverride ?? stats);
     const echoDepth = next.echoDepth ?? 0;
     fxEvents.push({ type: "activate", at: next.at, special: next.special });
-    addCell(clearSet, toClear, next.at);
+    addCell(board, clearSet, toClear, next.at, fxEvents);
     fxEvents.push(...specialActivateFx(next.special, next.at, applyStats));
     const struck = cellsForSpecial(next.special, next.at, board, rng, applyStats);
     for (const cell of struck) {
@@ -91,7 +106,7 @@ function activateSpecials(
           echoDepth: tile.echoDepth ?? 0,
         });
       }
-      addCell(clearSet, toClear, cell);
+      addCell(board, clearSet, toClear, cell, fxEvents);
     }
     if (next.strikeActivate) {
       for (const cell of struck) {
@@ -403,7 +418,7 @@ export function resolveBoard(
             echoDepth: tile.echoDepth ?? 0,
           });
         }
-        addCell(clearSet, toClear, cell);
+        addCell(board, clearSet, toClear, cell);
       }
       if (spawnSpecial !== "none") {
         spawns.push({ at: match.origin, special: spawnSpecial, color: spawnColor });

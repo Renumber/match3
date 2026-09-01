@@ -29,10 +29,10 @@ export function makeTile(
   return tile;
 }
 
-export function makeBlocker(): Tile {
+export function makeBlocker(hits = 1): Tile {
   const id = nextId;
   nextId += 1;
-  return { id, color: 0, special: "none", blocker: true };
+  return { id, color: 0, special: "none", blocker: true, hits };
 }
 
 export function emptyBoard(): (Tile | null)[][] {

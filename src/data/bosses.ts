@@ -12,7 +12,14 @@ export type CoresGimmick = {
   cells: Pos[];
 };
 
-export type BossGimmick = ArmorGimmick | CoresGimmick;
+export type PlatesGimmick = {
+  type: "plates";
+  cells: Pos[];
+  hits: number;
+  damage: number;
+};
+
+export type BossGimmick = ArmorGimmick | CoresGimmick | PlatesGimmick;
 
 export type BossDef = {
   id: string;
@@ -21,21 +28,19 @@ export type BossDef = {
   gimmicks: BossGimmick[];
 };
 
+const GOLEM_PLATES: Pos[] = [
+  { r: 3, c: 3 },
+  { r: 3, c: 4 },
+  { r: 4, c: 3 },
+  { r: 4, c: 4 },
+];
+
 export const GOLEM: BossDef = {
   id: "golem",
   name: "골렘",
   hp: 300,
   gimmicks: [
-    { type: "armor", start: 4, crackOnActivate: 1, crackOnBlocker: 1 },
-    {
-      type: "cores",
-      cells: [
-        { r: 3, c: 3 },
-        { r: 3, c: 4 },
-        { r: 4, c: 3 },
-        { r: 4, c: 4 },
-      ],
-    },
+    { type: "plates", cells: GOLEM_PLATES, hits: 3, damage: 50 },
   ],
 };
 
@@ -48,6 +53,7 @@ export const STAGE1_BOSS_HP = GOLEM.hp;
 export function armorStart(def: BossDef): number {
   for (const gimmick of def.gimmicks) {
     if (gimmick.type === "armor") return gimmick.start;
+    if (gimmick.type === "plates") return gimmick.cells.length * gimmick.hits;
   }
   return 0;
 }
