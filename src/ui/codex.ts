@@ -3,6 +3,7 @@ import {
   affinityRows,
   effectLines,
   offerWeightRows,
+  ownedCardRows,
   runStatRows,
   spawnRuleRows,
   threeMatchKindRows,
@@ -121,6 +122,7 @@ export function mountCodex(source: CodexSource): CodexUi {
     }
 
     runEl.replaceChildren(
+      renderRows("보유 카드", ownedCardRows(ownedIds)),
       renderRows("이번 런", runStatRows(source.stats())),
       renderRows("특수 생성", spawnRuleRows()),
       renderRows("3매치 특수 종류 (특수 생성 성공 시)", threeMatchKindRows()),

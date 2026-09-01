@@ -186,44 +186,6 @@ body {
   text-align: right;
 }
 
-.upgrades:empty {
-  display: none;
-}
-
-.xp-row .upgrades {
-  flex: 0 1 12em;
-  min-width: 0;
-  max-width: 42%;
-}
-
-.upgrades {
-  display: flex;
-  flex-wrap: nowrap;
-  gap: 6px;
-  min-height: 0;
-  max-width: 100%;
-  overflow-x: auto;
-  overflow-y: hidden;
-  scrollbar-width: none;
-  overscroll-behavior-x: contain;
-  touch-action: pan-x;
-}
-
-.upgrades::-webkit-scrollbar {
-  display: none;
-}
-
-.upgrade-chip {
-  flex: 0 0 auto;
-  font-size: 11px;
-  line-height: 1;
-  padding: 6px 8px;
-  border-radius: 999px;
-  background: #27272a;
-  color: #e4e4e7;
-  white-space: nowrap;
-}
-
 #levelup {
   position: fixed;
   inset: 0;

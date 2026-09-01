@@ -1,5 +1,5 @@
 import { LEVEL_UP_CARDS, UPGRADE_TAG_LABEL, type LevelUpCard, type UpgradeTag } from "../data/levelUpCards.ts";
-import { offerWeight, isCardSpent, tagAffinity } from "./levelUp.ts";
+import { cardById, isCardSpent, offerWeight, summarizeOwnedCards, tagAffinity } from "./levelUp.ts";
 import { THREE_MATCH_SPECIAL_WEIGHTS } from "./specialShape.ts";
 import { echoChance, UPGRADE_STAT_DEFS, type UpgradeEffect, type UpgradeStats } from "./upgradeStats.ts";
 
@@ -101,6 +101,21 @@ export function runStatRows(stats: UpgradeStats): InfoRow[] {
     { label: "레벨업 Move", value: `+${stats.movesOnLevel}` },
     { label: "XP 보너스", value: percent(stats.xpBonus) },
   ];
+}
+
+export function ownedCardRows(
+  ownedIds: string[],
+  pool: LevelUpCard[] = LEVEL_UP_CARDS,
+): InfoRow[] {
+  const summary = summarizeOwnedCards(ownedIds, pool);
+  if (!summary.length) return [{ label: "없음", value: "아직 고른 카드 없음" }];
+  return summary.map((item) => {
+    const card = cardById(item.id, pool);
+    return {
+      label: item.count > 1 ? `${item.title} ×${item.count}` : item.title,
+      value: card?.description ?? "",
+    };
+  });
 }
 
 export function spawnRuleRows(): InfoRow[] {

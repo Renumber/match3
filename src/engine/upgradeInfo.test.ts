@@ -3,6 +3,7 @@ import { LEVEL_UP_CARDS } from "../data/levelUpCards.ts";
 import {
   effectLines,
   offerWeightRows,
+  ownedCardRows,
   percent,
   runStatRows,
   squareSize,
@@ -23,6 +24,14 @@ describe("upgradeInfo", () => {
     expect(rows.some((row) => row.label === "폭탄 범위" && row.value === "5×5")).toBe(true);
     expect(rows.some((row) => row.label === "3매치 특수" && row.value === "25%")).toBe(true);
     expect(percent(0.25)).toBe("25%");
+  });
+
+  it("lists owned cards with counts and empty copy", () => {
+    expect(ownedCardRows([])).toEqual([{ label: "없음", value: "아직 고른 카드 없음" }]);
+    const bomb = LEVEL_UP_CARDS.find((card) => card.id === "bombRadius");
+    expect(bomb).toBeDefined();
+    const rows = ownedCardRows(["bombRadius", "bombRadius"]);
+    expect(rows).toEqual([{ label: `${bomb?.title} ×2`, value: bomb?.description ?? "" }]);
   });
 
   it("shows 3-match kind odds that sum near 100%", () => {

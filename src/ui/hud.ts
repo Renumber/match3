@@ -11,7 +11,6 @@ export type Hud = {
     armor: number,
     armorMax: number,
   ) => void;
-  setUpgrades: (items: { title: string; count: number }[]) => void;
 };
 
 function mustEl<T extends Element>(selector: string): T {
@@ -27,7 +26,6 @@ export function mountHud(): Hud {
   const levelEl = mustEl("#level");
   const xpLabel = mustEl("#xp-label");
   const xpFill = mustEl<HTMLElement>("#xp-fill");
-  const upgradesEl = mustEl("#upgrades");
   const bossNameEl = mustEl("#boss-name");
   const bossArmorEl = mustEl<HTMLElement>("#boss-armor");
   const bossFill = mustEl<HTMLElement>("#boss-fill");
@@ -59,15 +57,6 @@ export function mountHud(): Hud {
       bossHpEl.textContent = `${current}/${max}`;
       const pct = max <= 0 ? 0 : Math.min(100, Math.round((current / max) * 100));
       bossFill.style.width = `${pct}%`;
-    },
-    setUpgrades: (items) => {
-      upgradesEl.replaceChildren();
-      for (const item of items) {
-        const chip = document.createElement("span");
-        chip.className = "upgrade-chip";
-        chip.textContent = item.count > 1 ? `${item.title} ×${item.count}` : item.title;
-        upgradesEl.append(chip);
-      }
     },
   };
 }

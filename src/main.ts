@@ -1,7 +1,6 @@
 import "./style.css";
 import { Application } from "pixi.js";
 import { Game } from "./engine/game.ts";
-import { summarizeOwnedCards } from "./engine/levelUp.ts";
 import { mountBoard } from "./render/boardView.ts";
 import { mountCodex } from "./ui/codex.ts";
 import { mountHud } from "./ui/hud.ts";
@@ -37,7 +36,6 @@ async function boot(): Promise<void> {
     hud.setLevel(game.level);
     hud.setXp(game.xp, game.xpToNext);
     hud.setBoss(game.bossName, game.bossHp, game.bossMaxHp, game.bossArmor, game.bossArmorMax);
-    hud.setUpgrades(summarizeOwnedCards(game.ownedCardIds));
   };
 
   const levelUp = mountLevelUp((cardId) => {
