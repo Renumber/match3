@@ -432,6 +432,42 @@ describe("resolveBoard", () => {
     expect(getTile(board, { r: 0, c: 5 })?.blocker).toBeFalsy();
     expect(result.blockersCleared).toBe(1);
   });
+
+  it("refills afterClear blockers before leftover specials plant", () => {
+    const board = noMatchGrid();
+    setTile(board, { r: 2, c: 1 }, makeTile(0));
+    setTile(board, { r: 2, c: 2 }, makeTile(0, "bomb"));
+    setTile(board, { r: 2, c: 3 }, makeTile(0));
+    setTile(board, { r: 3, c: 3 }, makeBlocker(1));
+    const stats = defaultUpgradeStats();
+    stats.autoDetonate = true;
+    stats.bombEcho = 4;
+    const refillAt = { r: 4, c: 2 };
+    let refilled = false;
+    const result = resolveBoard(
+      board,
+      mulberry32(1),
+      { r: 2, c: 2 },
+      stats,
+      undefined,
+      (next, _rng, destroyed) => {
+        if (refilled || !destroyed.some((at) => at.r === 3 && at.c === 3)) return [];
+        refilled = true;
+        const tile = makeBlocker(1);
+        setTile(next, refillAt, tile);
+        return [{ type: "spawn", at: refillAt, special: "none", tile }];
+      },
+    );
+    const plateSpawn = result.events.findIndex((e) => e.type === "spawn" && e.tile.blocker);
+    const leftoverSpawn = result.events.findIndex((e) => e.type === "spawn" && e.tile.plain);
+    const settle = result.events.findIndex((e) => e.type === "fall" || e.type === "dropIn");
+    expect(refilled).toBe(true);
+    expect(plateSpawn).toBeGreaterThan(-1);
+    expect(leftoverSpawn).toBeGreaterThan(plateSpawn);
+    if (settle >= 0) expect(plateSpawn).toBeLessThan(settle);
+    expect(result.blockersCleared).toBe(2);
+    expect(getTile(board, refillAt)?.blocker).toBeFalsy();
+  });
 });
 
 function noMatchGrid() {

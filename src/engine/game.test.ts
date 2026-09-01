@@ -91,11 +91,16 @@ describe("Game.trySwap special combo", () => {
     setTile(game.board, { r: 2, c: 2 }, makeTile(1));
     setTile(game.board, { r: 2, c: 3 }, makeTile(0, "bomb"));
     const hp = game.bossHp;
-    game.trySwap({ r: 2, c: 2 }, { r: 2, c: 3 });
+    const out = game.trySwap({ r: 2, c: 2 }, { r: 2, c: 3 });
     expect(game.bossHp).toBe(hp - 1);
     expect(game.lastDamage).toBe(1);
     expect(plateCells(game.board)).toHaveLength(4);
     expect(getTile(game.board, target)?.blocker).toBeFalsy();
+    const events = out.result?.events ?? [];
+    const plateSpawn = events.findIndex((e) => e.type === "spawn" && e.tile.blocker);
+    const settle = events.findIndex((e) => e.type === "fall" || e.type === "dropIn");
+    expect(plateSpawn).toBeGreaterThan(-1);
+    if (settle >= 0) expect(plateSpawn).toBeLessThan(settle);
   });
 
   it("grants extra xp when a plate is destroyed", () => {

@@ -233,11 +233,18 @@ export function mountBoard(app: Application, game: Game, hud: HudHooks): BoardVi
           break;
         }
         case "spawn": {
+          const key = posKey(event.at);
+          const existing = occupancy.get(key);
+          if (existing) {
+            occupancy.delete(key);
+            existing.g.destroy();
+          }
           const g = makeSprite(event.tile, false);
           placeAt(g, event.at.r, event.at.c);
           g.scale.set(0);
-          tileLayer.addChild(g);
-          occupancy.set(posKey(event.at), { g, tile: event.tile });
+          if (event.tile.blocker) plateLayer.addChild(g);
+          else tileLayer.addChild(g);
+          occupancy.set(key, { g, tile: event.tile });
           await animate(app, 160, (t) => g.scale.set(t), easeOutBack);
           g.scale.set(1);
           break;

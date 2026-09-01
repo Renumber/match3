@@ -174,7 +174,7 @@ Color / Gravity / Clone / Fire / Freeze / Nuclear는 MVP 밖.
 보스는 `src/data/bosses.ts` 기믹 목록. 엔진 적용은 `src/engine/boss.ts`. `game` / `resolve` / `specials`에 보스명 `if` 없음. 새 보스 = def 추가. 새 기믹 타입 = `boss.ts` case 하나.
 
 - 갑옷 판 4장. 시작은 중앙 2×2. 3타에 파괴. 스왑/매치 불가. 판은 자리 고정. 보석은 판 뒤로 낙하. Line/Bomb/Lightning이 칸을 치면 1타
-- 파괴당 보스 HP −1. 초반은 같은 resolve에서 깬 칸이 아닌 다른 칸에 새 판(3타) 생성
+- 파괴당 보스 HP −1. 초반은 같은 resolve에서 깬 칸이 아닌 다른 칸에 새 판(3타) 생성. **잔류·낙하보다 먼저** 깔아서 후속 연쇄가 새 판을 때릴 수 있다.
 - 매치로 지운 타일은 XP. 갑옷 판을 깨면 추가로 +5 XP. 보스는 판을 깨야 맞음
 - HP 10 이하: 후반. 남은 목숨만큼 분노 판을 한 번에 깔고, 더 이상 재생성 없음
 - 번개가 갑옷 판 우선 타격

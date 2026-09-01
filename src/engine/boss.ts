@@ -1,6 +1,6 @@
 import { plateLateAt, platesGimmick, type BossDef, type BossGimmick, type PlatesGimmick } from "../data/bosses.ts";
 import { getTile, makeBlocker, setTile } from "./board.ts";
-import type { ResolveResult } from "./events.ts";
+import type { GameEvent, ResolveResult } from "./events.ts";
 import { pickInt, type Rng } from "./rng.ts";
 import type { RunProgress } from "./run.ts";
 import { COLS, ROWS, samePos, type Pos, type Tile } from "./types.ts";
@@ -46,9 +46,12 @@ export function refillBossTiles(
   rng: Rng,
   def: BossDef,
   avoid: Pos[] = [],
-): void {
+  late = false,
+): GameEvent[] {
+  if (late) return [];
   const gimmick = platesGimmick(def);
-  if (gimmick) refillPlates(board, rng, gimmick, avoid);
+  if (!gimmick) return [];
+  return refillPlates(board, rng, gimmick, avoid);
 }
 
 export function syncBossTiles(
@@ -158,10 +161,15 @@ function refillPlates(
   rng: Rng,
   gimmick: PlatesGimmick,
   avoid: Pos[],
-): void {
-  for (let i = 0; i < avoid.length; i++) {
+): GameEvent[] {
+  const events: GameEvent[] = [];
+  const need = gimmick.cells.length;
+  while (platePositions(board).length < need) {
     const at = pickFreeCell(board, rng, avoid);
-    if (!at) return;
-    setTile(board, at, makeBlocker(gimmick.hits));
+    if (!at) break;
+    const tile = makeBlocker(gimmick.hits);
+    setTile(board, at, tile);
+    events.push({ type: "spawn", at, special: "none", tile });
   }
+  return events;
 }
