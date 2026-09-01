@@ -47,7 +47,7 @@ export function mountResult(onRetry: () => void): ResultUi {
       title.textContent = win ? "클리어" : "실패";
       detail.textContent = win
         ? `지운 타일 ${info.cleared} · 남은 Moves ${info.moves}`
-        : `남은 HP ${info.bossHp}/${info.bossMaxHp} · 지운 타일 ${info.cleared}`;
+        : `남은 갑옷 ${info.bossHp}/${info.bossMaxHp} · 지운 타일 ${info.cleared}`;
       root.classList.remove("hidden");
       root.setAttribute("aria-hidden", "false");
     },

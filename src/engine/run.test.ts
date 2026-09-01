@@ -11,7 +11,7 @@ import {
 describe("run xp", () => {
   it("starts with the raised move count", () => {
     expect(createRun().moves).toBe(STARTING_MOVES);
-    expect(STARTING_MOVES).toBe(40);
+    expect(STARTING_MOVES).toBe(30);
   });
   it("levels up when xp fills the bar", () => {
     const run = createRun();

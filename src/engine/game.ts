@@ -1,12 +1,12 @@
 import { bothSpecials } from "./combo.ts";
 import { createFilledBoard, getTile, swapTiles } from "./board.ts";
-import { applyResolveToBoss, armorHitsOnBoard, placeBossTiles, platePositions, refillBossTiles } from "./boss.ts";
+import { applyResolveToBoss, armorHitsOnBoard, placeBossTiles, platePositions, syncBossTiles } from "./boss.ts";
 import { hasMatch, hasPossibleSwap, shuffleUntilPlayable } from "./match.ts";
 import { mulberry32, type Rng } from "./rng.ts";
 import { resolveBoard } from "./resolve.ts";
 import { isAdjacent, type Pos, type Tile } from "./types.ts";
 import type { ResolveResult } from "./events.ts";
-import { STAGE1_BOSS, type BossDef } from "../data/bosses.ts";
+import { plateLateAt, STAGE1_BOSS, type BossDef } from "../data/bosses.ts";
 import type { LevelUpCard } from "../data/levelUpCards.ts";
 import { addXp, createRun, type RunProgress } from "./run.ts";
 import {
@@ -98,6 +98,14 @@ export class Game {
     return this.run.bossArmorMax;
   }
 
+  get bossLateAt(): number {
+    return plateLateAt(this.boss);
+  }
+
+  get bossLate(): boolean {
+    return this.run.bossLate;
+  }
+
   grantXp(amount: number): void {
     const before = this.run.level;
     addXp(this.run, amount);
@@ -168,7 +176,7 @@ export class Game {
     this.lastChain = result.chain;
     this.totalCleared += result.cleared;
     this.lastDamage = applyResolveToBoss(this.run, result);
-    refillBossTiles(this.board, this.rng, this.boss, destroyedPlates);
+    syncBossTiles(this.board, this.rng, this.run, this.boss, destroyedPlates);
     this.grantXp(xpFromClears(result.cleared, this.upgrades));
     this.run.moves += extraMovesAfterResolve(result, this.upgrades);
     this.syncPhase();

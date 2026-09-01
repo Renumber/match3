@@ -62,39 +62,20 @@ describe("Game.trySwap special combo", () => {
     expect(getTile(game.board, plate)?.blocker).toBe(true);
   });
 
-  it("chips golem plates without destroying them on one hit", () => {
+  it("breaks a golem plate in one special hit, deals 1, and respawns elsewhere", () => {
     const game = new Game(1);
     game.board = noMatchGrid();
     placeBossTiles(game.board, STAGE1_BOSS);
-    setTile(game.board, { r: 1, c: 2 }, makeTile(0));
-    setTile(game.board, { r: 2, c: 2 }, makeTile(0));
-    setTile(game.board, { r: 3, c: 2 }, makeTile(1));
-    setTile(game.board, { r: 4, c: 2 }, makeTile(0, "lineH"));
+    setTile(game.board, { r: 2, c: 0 }, makeTile(0));
+    setTile(game.board, { r: 2, c: 1 }, makeTile(0));
+    setTile(game.board, { r: 2, c: 2 }, makeTile(1));
+    setTile(game.board, { r: 2, c: 3 }, makeTile(0, "bomb"));
     const hp = game.bossHp;
-    game.trySwap({ r: 3, c: 2 }, { r: 4, c: 2 });
+    game.trySwap({ r: 2, c: 2 }, { r: 2, c: 3 });
+    expect(game.bossHp).toBe(hp - 1);
+    expect(game.lastDamage).toBe(1);
     expect(plateCells(game.board)).toHaveLength(4);
-    expect(getTile(game.board, { r: 3, c: 3 })?.hits).toBe(2);
-    expect(game.bossHp).toBe(hp);
-    expect(game.lastDamage).toBe(0);
-  });
-
-  it("breaks a last-hit plate, deals damage, and respawns elsewhere", () => {
-    const game = new Game(1);
-    game.board = noMatchGrid();
-    placeBossTiles(game.board, STAGE1_BOSS);
-    const target = { r: 3, c: 3 };
-    const tile = getTile(game.board, target);
-    if (tile) tile.hits = 1;
-    setTile(game.board, { r: 1, c: 2 }, makeTile(0));
-    setTile(game.board, { r: 2, c: 2 }, makeTile(0));
-    setTile(game.board, { r: 3, c: 2 }, makeTile(1));
-    setTile(game.board, { r: 4, c: 2 }, makeTile(0, "lineH"));
-    const hp = game.bossHp;
-    game.trySwap({ r: 3, c: 2 }, { r: 4, c: 2 });
-    expect(game.bossHp).toBe(hp - 50);
-    expect(game.lastDamage).toBe(50);
-    expect(plateCells(game.board)).toHaveLength(4);
-    expect(getTile(game.board, target)?.blocker).toBeFalsy();
+    expect(getTile(game.board, { r: 3, c: 3 })?.blocker).toBeFalsy();
   });
 
   it("still bounces special into a normal tile with no match", () => {
@@ -139,17 +120,21 @@ describe("Game boss", () => {
     expect(game.bossArmor).toBe(armor);
   });
 
-  it("chips plate hits when specials connect", () => {
+  it("opens late phase with remaining life as enraged plates", () => {
     const game = new Game(1);
     game.board = noMatchGrid();
     placeBossTiles(game.board, STAGE1_BOSS);
-    setTile(game.board, { r: 1, c: 2 }, makeTile(0));
-    setTile(game.board, { r: 2, c: 2 }, makeTile(0));
-    setTile(game.board, { r: 3, c: 2 }, makeTile(1));
-    setTile(game.board, { r: 4, c: 2 }, makeTile(0, "lineH"));
-    const armor = game.bossArmor;
-    game.trySwap({ r: 3, c: 2 }, { r: 4, c: 2 });
-    expect(game.bossArmor).toBeLessThan(armor);
+    game.run.bossHp = 11;
+    setTile(game.board, { r: 2, c: 0 }, makeTile(0));
+    setTile(game.board, { r: 2, c: 1 }, makeTile(0));
+    setTile(game.board, { r: 2, c: 2 }, makeTile(1));
+    setTile(game.board, { r: 2, c: 3 }, makeTile(0, "bomb"));
+    game.trySwap({ r: 2, c: 2 }, { r: 2, c: 3 });
+    expect(game.bossHp).toBe(10);
+    expect(game.bossLate).toBe(true);
+    const plates = plateCells(game.board);
+    expect(plates).toHaveLength(10);
+    expect(plates.every((at) => getTile(game.board, at)?.enraged)).toBe(true);
   });
 
   it("wins when the boss dies, even on the last move", () => {

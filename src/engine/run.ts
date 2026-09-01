@@ -1,6 +1,6 @@
 import { STAGE1_BOSS, armorStart, type BossDef, type BossGimmick } from "../data/bosses.ts";
 
-export const STARTING_MOVES = 40;
+export const STARTING_MOVES = 30;
 export { STAGE1_BOSS_HP, STAGE1_BOSS_NAME, STAGE1_BOSS_ARMOR } from "../data/bosses.ts";
 
 export type RunProgress = {
@@ -15,6 +15,7 @@ export type RunProgress = {
   bossMaxHp: number;
   bossArmor: number;
   bossArmorMax: number;
+  bossLate: boolean;
   bossGimmicks: BossGimmick[];
 };
 
@@ -36,6 +37,7 @@ export function createRun(boss: BossDef = STAGE1_BOSS): RunProgress {
     bossMaxHp: boss.hp,
     bossArmor: armor,
     bossArmorMax: armor,
+    bossLate: false,
     bossGimmicks: [...boss.gimmicks],
   };
 }

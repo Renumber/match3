@@ -35,7 +35,7 @@ async function boot(): Promise<void> {
     hud.setMoves(game.moves);
     hud.setLevel(game.level);
     hud.setXp(game.xp, game.xpToNext);
-    hud.setBoss(game.bossName, game.bossHp, game.bossMaxHp, game.bossArmor, game.bossArmorMax);
+    hud.setBoss(game.bossName, game.bossHp, game.bossMaxHp, game.bossLateAt, game.bossLate);
   };
 
   const levelUp = mountLevelUp((cardId) => {
@@ -78,7 +78,7 @@ async function boot(): Promise<void> {
     setChain: hud.setChain,
     setCleared: hud.setCleared,
     setBossHp: (current, max) =>
-      hud.setBoss(game.bossName, current, max, game.bossArmor, game.bossArmorMax),
+      hud.setBoss(game.bossName, current, max, game.bossLateAt, current <= game.bossLateAt || game.bossLate),
     onResolved: () => {
       refreshHud();
       syncOverlays();

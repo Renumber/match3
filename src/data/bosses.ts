@@ -17,6 +17,8 @@ export type PlatesGimmick = {
   cells: Pos[];
   hits: number;
   damage: number;
+  /** Remaining HP that opens late phase. 0 = no late phase. */
+  lateAt?: number;
 };
 
 export type BossGimmick = ArmorGimmick | CoresGimmick | PlatesGimmick;
@@ -38,9 +40,9 @@ const GOLEM_PLATES: Pos[] = [
 export const GOLEM: BossDef = {
   id: "golem",
   name: "골렘",
-  hp: 300,
+  hp: 30,
   gimmicks: [
-    { type: "plates", cells: GOLEM_PLATES, hits: 3, damage: 50 },
+    { type: "plates", cells: GOLEM_PLATES, hits: 1, damage: 1, lateAt: 10 },
   ],
 };
 
@@ -49,6 +51,14 @@ export const BOSSES: BossDef[] = [GOLEM];
 export const STAGE1_BOSS = GOLEM;
 export const STAGE1_BOSS_NAME = GOLEM.name;
 export const STAGE1_BOSS_HP = GOLEM.hp;
+
+export function platesGimmick(def: BossDef): PlatesGimmick | undefined {
+  return def.gimmicks.find((gimmick): gimmick is PlatesGimmick => gimmick.type === "plates");
+}
+
+export function plateLateAt(def: BossDef): number {
+  return platesGimmick(def)?.lateAt ?? 0;
+}
 
 export function armorStart(def: BossDef): number {
   for (const gimmick of def.gimmicks) {

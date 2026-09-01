@@ -31,10 +31,10 @@
 
 | 있음 | 없음 |
 | --- | --- |
-| 8×8, 색 5, Moves 40, 인접 스왑, 매치 없으면 튕김. 특수끼리 스왑은 매치 없어도 발동 | Bonus Chain, Final Burst, Critical Mass |
+| 8×8, 색 5, Moves 30, 인접 스왑, 매치 없으면 튕김. 특수끼리 스왑은 매치 없어도 발동 | Bonus Chain, Final Burst, Critical Mass |
 | 일반 스왑만 Move -1. 교착이면 셔플 | `fsm.ts` 파일. Bonus 단계는 없음 |
 | XP → 레벨업 3택 | |
-| 보스 골렘 HP 300, 갑옷 판 4장×3타. 파괴 시 50 피해 후 다른 칸 재생성. 매치는 XP만. 처치 승 / Moves 0 패 | |
+| 보스 골렘 HP 30, 갑옷 판 1타=1HP. 초반 4장 재생성. HP 10부터 후반(분노 판 일괄, 재생 없음). 매치는 XP만. 처치 승 / Moves 0 패 | |
 
 ### 엔진 `src/engine/`
 
@@ -43,14 +43,14 @@
 - resolve: 매치 → 생성 → 발동 → 중력. 범위 안 특수는 Activate. 특수끼리 스왑은 `combo.ts` 레시피. 자동 점화도 직교 인접 특수에 같은 레시피. Bomb+Lightning / Line+Lightning은 번개 타격 칸에서 서브 폭탄·라인 발동. 스텝 상한 80. 갑옷 판은 자리 고정, 보석은 판을 건너 낙하.
 - 업글은 `upgradeStats` 숫자/플래그 + `upgradeRules` 훅. `game` / `resolve` / `specials`에 카드별 `if` 없음.
 - 보스는 `data/bosses.ts` 기믹 목록 + `engine/boss.ts` 적용. `game`에 보스명 `if` 없음. 새 기믹은 def 추가 + `boss.ts` case.
-- 런: Moves 40, 보스 골렘 HP 300 / 갑옷 판 4장(3타, 파괴 50, 다른 칸 재생성). 매치는 XP만. 페이즈 `idle` / `levelUp` / `win` / `lose`. 교착 셔플.
+- 런: Moves 30, 보스 골렘 HP 30 / 갑옷 판 4장(1타, 파괴 1, 초반 재생성). HP 10 이하 후반: 남은 목숨만큼 분노 판, 재생 없음. 매치는 XP만. 페이즈 `idle` / `levelUp` / `win` / `lose`. 교착 셔플.
 - vitest: match, gravity, resolve, specials, combo, game, run, boss, levelUp, upgrades, upgradeRules, upgradeInfo, rng.
 
 ### 보드 / HUD
 
 - PixiJS v8. 이벤트 타임라인 재생 (스왑, 튕김, 하이라이트, 발동, 라인/폭탄/번개 FX, 낙하). 갑옷은 앞 레이어, 보석 낙하는 뒤로.
 - 입력: 탭-탭, 스와이프. resolve 중 `busy`.
-- HUD: Moves, Level, Chain, Cleared, XP. 보스 바(이름+갑옷+HP). 보유 카드는 상태 탭. 페이지 스크롤 없음.
+- HUD: Moves, Level, Chain, Cleared, XP. 보스 바 30칸(앞 20 돌, 뒤 10 다이아). 후반 뱃지. 보유 카드는 상태 탭. 페이지 스크롤 없음.
 - 레벨업 모달, 승/패 결과, 도감(카드/이번 런 스탯·보유 카드).
 - Amplify: `amplify.yml` (`npm test` + `vite build`).
 
@@ -69,7 +69,6 @@
 
 ## 설계와 다른 점
 
-- Moves 기본값: 문서 30, 코드 **40**.
 - 자동 점화: 생성 즉시 발동. 직교 인접 특수가 있으면 스왑과 같은 레시피.
 - MVP 카드 6장 제안 → 코드 **14장** + 희귀도/핵심 칸.
 - 웹 폴더안 `fsm.ts` / `bonus.ts` / `bonusOverlay.ts`는 아직 파일 없음. 승/패는 `game.ts` 페이즈.
@@ -77,6 +76,11 @@
 ---
 
 ## 로그
+
+### 2026-09-01 — 골렘 30칸, 후반 분노 판
+
+- 여유 Moves면 클리어가 헐거웠다. Moves 30, 판 30장=처치.
+- HP 10부터 후반. 남은 목숨만큼 빨간 다이아 판을 한 번에 깔고 재생 없음. 바 뒤 10칸이 그 구간.
 
 ### 2026-09-01 — 보유 카드는 상태 탭
 

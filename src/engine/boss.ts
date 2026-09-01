@@ -1,4 +1,4 @@
-import type { BossDef, BossGimmick, PlatesGimmick } from "../data/bosses.ts";
+import { platesGimmick, type BossDef, type BossGimmick, type PlatesGimmick } from "../data/bosses.ts";
 import { getTile, makeBlocker, setTile } from "./board.ts";
 import type { ResolveResult } from "./events.ts";
 import { pickInt, type Rng } from "./rng.ts";
@@ -47,9 +47,28 @@ export function refillBossTiles(
   def: BossDef,
   avoid: Pos[] = [],
 ): void {
-  for (const gimmick of def.gimmicks) {
-    if (gimmick.type === "plates") refillPlates(board, rng, gimmick, avoid);
+  const gimmick = platesGimmick(def);
+  if (gimmick) refillPlates(board, rng, gimmick, avoid);
+}
+
+export function syncBossTiles(
+  board: (Tile | null)[][],
+  rng: Rng,
+  run: RunProgress,
+  def: BossDef,
+  destroyed: Pos[] = [],
+): void {
+  const gimmick = platesGimmick(def);
+  if (!gimmick) return;
+  if (run.bossHp <= 0) return;
+  const lateAt = gimmick.lateAt ?? 0;
+  if (!run.bossLate && lateAt > 0 && run.bossHp <= lateAt) {
+    run.bossLate = true;
+    enterLatePlates(board, rng, gimmick, run.bossHp);
+    return;
   }
+  if (run.bossLate) return;
+  refillPlates(board, rng, gimmick, destroyed);
 }
 
 export function applyBossHit(run: RunProgress, ctx: BossHitCtx): number {
@@ -101,6 +120,23 @@ function applyArmorCrack(
     activates * gimmick.crackOnActivate + blockersCleared * gimmick.crackOnBlocker;
   const cracked = Math.min(run.bossArmor, Math.max(0, cracks));
   run.bossArmor -= cracked;
+}
+
+function enterLatePlates(
+  board: (Tile | null)[][],
+  rng: Rng,
+  gimmick: PlatesGimmick,
+  need: number,
+): void {
+  for (const at of platePositions(board)) {
+    const tile = getTile(board, at);
+    setTile(board, at, makeBlocker(tile?.hits ?? gimmick.hits, true));
+  }
+  while (platePositions(board).length < need) {
+    const at = pickFreeCell(board, rng, []);
+    if (!at) return;
+    setTile(board, at, makeBlocker(gimmick.hits, true));
+  }
 }
 
 function pickFreeCell(board: (Tile | null)[][], rng: Rng, avoid: Pos[]): Pos | null {

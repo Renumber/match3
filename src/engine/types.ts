@@ -21,6 +21,7 @@ export type Tile = {
   echoDepth?: number;
   blocker?: boolean;
   hits?: number;
+  enraged?: boolean;
 };
 
 export function isBlocker(tile: Tile | null | undefined): boolean {

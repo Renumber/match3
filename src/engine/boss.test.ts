@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { STAGE1_BOSS, type BossDef } from "../data/bosses.ts";
 import { createFilledBoard, getTile, makeTile, setTile } from "./board.ts";
-import { applyBossHit, placeBossTiles, refillBossTiles } from "./boss.ts";
+import { applyBossHit, placeBossTiles, refillBossTiles, syncBossTiles } from "./boss.ts";
 import { mulberry32 } from "./rng.ts";
 import { createRun } from "./run.ts";
 
@@ -25,7 +25,7 @@ describe("boss catalog", () => {
     const board = createFilledBoard(mulberry32(1));
     placeBossTiles(board, STAGE1_BOSS);
     expect(getTile(board, { r: 3, c: 3 })?.blocker).toBe(true);
-    expect(getTile(board, { r: 3, c: 3 })?.hits).toBe(3);
+    expect(getTile(board, { r: 3, c: 3 })?.hits).toBe(1);
     expect(getTile(board, { r: 4, c: 4 })?.blocker).toBe(true);
   });
 
@@ -72,5 +72,50 @@ describe("boss catalog", () => {
       }
     }
     expect(n).toBe(4);
+  });
+
+  it("dumps remaining hp as enraged plates when late hp is reached", () => {
+    const board = createFilledBoard(mulberry32(3));
+    placeBossTiles(board, STAGE1_BOSS);
+    const run = createRun();
+    run.bossHp = 10;
+    syncBossTiles(board, mulberry32(4), run, STAGE1_BOSS, []);
+    expect(run.bossLate).toBe(true);
+    const plates = [];
+    for (let r = 0; r < 8; r++) {
+      for (let c = 0; c < 8; c++) {
+        const tile = getTile(board, { r, c });
+        if (tile?.blocker) plates.push(tile);
+      }
+    }
+    expect(plates).toHaveLength(10);
+    expect(plates.every((tile) => tile.enraged)).toBe(true);
+  });
+
+  it("does not refill plates after late phase", () => {
+    const board = createFilledBoard(mulberry32(5));
+    placeBossTiles(board, STAGE1_BOSS);
+    const run = createRun();
+    run.bossHp = 10;
+    syncBossTiles(board, mulberry32(6), run, STAGE1_BOSS, []);
+    const gone = { r: 0, c: 0 };
+    for (let r = 0; r < 8; r++) {
+      for (let c = 0; c < 8; c++) {
+        if (getTile(board, { r, c })?.blocker) {
+          gone.r = r;
+          gone.c = c;
+        }
+      }
+    }
+    setTile(board, gone, makeTile(1));
+    run.bossHp = 9;
+    syncBossTiles(board, mulberry32(8), run, STAGE1_BOSS, [gone]);
+    let n = 0;
+    for (let r = 0; r < 8; r++) {
+      for (let c = 0; c < 8; c++) {
+        if (getTile(board, { r, c })?.blocker) n += 1;
+      }
+    }
+    expect(n).toBe(9);
   });
 });

@@ -123,37 +123,80 @@ body {
   gap: 10px;
 }
 
-.boss-row span,
+.boss-row > span,
 .xp-row span {
   font-size: 11px;
   letter-spacing: 0.08em;
   color: #a1a1aa;
 }
 
-.boss-row span {
+#boss-name {
   min-width: 2.5em;
   color: #fca5a5;
 }
 
-.boss-armor {
+.boss-phase {
   flex: 0 0 auto;
   font-size: 11px;
   font-style: normal;
   letter-spacing: 0.06em;
   padding: 3px 7px;
   border-radius: 999px;
-  background: #44403c;
-  color: #e7e5e4;
+  background: #9f1239;
+  color: #fecdd3;
   white-space: nowrap;
 }
 
-.boss-armor[data-broken="true"] {
-  background: #27272a;
-  color: #71717a;
+.boss-pips {
+  flex: 1 1 auto;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
 }
 
-.xp-bar,
-.boss-bar {
+.boss-pips-early,
+.boss-pips-late {
+  display: flex;
+  align-items: center;
+}
+
+.boss-pips-early {
+  flex: 1 1 auto;
+  gap: 2px;
+  min-width: 0;
+}
+
+.boss-pips-late {
+  flex: 0 0 auto;
+  gap: 4px;
+}
+
+.boss-pip[data-zone="early"] {
+  flex: 1 1 0;
+  height: 10px;
+  min-width: 0;
+  border-radius: 2px;
+  background: #27272a;
+}
+
+.boss-pip[data-zone="early"][data-on="true"] {
+  background: #a8a29e;
+}
+
+.boss-pip[data-zone="late"] {
+  width: 8px;
+  height: 8px;
+  flex: 0 0 8px;
+  transform: rotate(45deg);
+  background: #3f1d24;
+}
+
+.boss-pip[data-zone="late"][data-on="true"] {
+  background: #e11d48;
+}
+
+.xp-bar {
   flex: 1 1 auto;
   height: 8px;
   border-radius: 999px;
@@ -161,23 +204,13 @@ body {
   overflow: hidden;
 }
 
-.boss-bar {
-  height: 10px;
-}
-
-.xp-bar i,
-.boss-bar i {
+.xp-bar i {
   display: block;
   height: 100%;
   width: 0;
   background: #eab308;
 }
 
-.boss-bar i {
-  background: #dc2626;
-}
-
-.boss-row strong,
 .xp-row strong {
   font-size: 12px;
   font-variant-numeric: tabular-nums;
