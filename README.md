@@ -6,10 +6,12 @@
 
 Candy Crush × Vampire Survivors. Balatro처럼 계산하지 않는다.
 
-현재는 웹에서 한 판 풀 루프를 검증하는 MVP 단계.
+현재: Match → 특수 → 연쇄 → XP → 3택까지 웹에서 돈다. 보스 / Bonus Chain / Final Burst는 아직.
 
 ## 문서
 
+- [docs/progress.md](docs/progress.md) — 지금 있는 것, 개발 로그. 기능 넣으면 여기 갱신.
+- [docs/backlog.md](docs/backlog.md) — 남은 일. 한 판 루프를 닫는 순서가 우선.
 - [docs/mvp.md](docs/mvp.md) — 게임 설계. 잠긴 규칙과 미확정 항목.
 - [docs/web.md](docs/web.md) — 웹 테스트 구조, 엔진 분리, 구현 순서.
 - [docs/ship.md](docs/ship.md) — Amplify MVP → Steam / 앱스토어.
@@ -17,7 +19,7 @@ Candy Crush × Vampire Survivors. Balatro처럼 계산하지 않는다.
 ## 스택
 
 - **엔진:** 순수 TypeScript. Vue/Pixi를 모름. vitest로 연쇄 검증.
-- **보드:** PixiJS v8. Line / Bomb / Lightning / Final Burst 연출.
+- **보드:** PixiJS v8. Line / Bomb / Lightning 연출. Burst는 아직.
 - **HUD:** DOM 오버레이. 레벨업 3택, Moves, 보스 HP.
 - **번들:** Vite.
 

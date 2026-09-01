@@ -2,6 +2,8 @@
 
 첫 플레이 가능 목표: **한 판 풀 루프** (Match → 레벨업 → 보스 처치 → Bonus Chain → Final Burst).
 
+구현 현황은 [progress.md](progress.md). 남은 일은 [backlog.md](backlog.md). 아래 폴더/단계는 목표 구조다. `fsm.ts` / `bonus.ts` / `bonusOverlay.ts`는 아직 없다.
+
 내부 구현은 아래 P0 → P4 순서. 한 파일에 전부 섞지 않는다.
 
 ---

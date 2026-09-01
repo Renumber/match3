@@ -1,3 +1,4 @@
+import { bothSpecials } from "./combo.ts";
 import { createFilledBoard, getTile, swapTiles } from "./board.ts";
 import { hasMatch } from "./match.ts";
 import { mulberry32, type Rng } from "./rng.ts";
@@ -93,12 +94,15 @@ export class Game {
     if (this.phase !== "idle") return { bounced: true, result: null };
     if (this.run.moves <= 0) return { bounced: true, result: null };
     if (!isAdjacent(a, b)) return { bounced: true, result: null };
-    if (!getTile(this.board, a) || !getTile(this.board, b)) {
+    const tileA = getTile(this.board, a);
+    const tileB = getTile(this.board, b);
+    if (!tileA || !tileB) {
       return { bounced: true, result: null };
     }
+    const specialSwap = bothSpecials(tileA.special, tileB.special);
 
     swapTiles(this.board, a, b);
-    if (!hasMatch(this.board)) {
+    if (!specialSwap && !hasMatch(this.board)) {
       swapTiles(this.board, a, b);
       return {
         bounced: true,
@@ -106,7 +110,13 @@ export class Game {
       };
     }
 
-    const result = resolveBoard(this.board, this.rng, b, this.upgrades);
+    const result = resolveBoard(
+      this.board,
+      this.rng,
+      b,
+      this.upgrades,
+      specialSwap ? { a, b } : undefined,
+    );
     this.run.moves -= 1;
     this.lastChain = result.chain;
     this.totalCleared += result.cleared;

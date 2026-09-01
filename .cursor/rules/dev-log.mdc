@@ -1,0 +1,16 @@
+---
+description: 기능이 바뀌면 docs/progress.md와 docs/backlog.md를 같이 갱신한다.
+alwaysApply: true
+---
+
+# 개발 로그
+
+플레이어 체감, 엔진 규칙, 카드/훅, 한 판 루프가 바뀌면 코드를 끝낸 뒤 문서를 고친다.
+
+1. `docs/progress.md` — **지금 있는 것**을 코드와 맞춘다. **로그** 맨 위에 `### YYYY-MM-DD — 한 줄` + 무엇을/왜.
+2. `docs/backlog.md` — 끝난 항목 체크하거나 섹션에서 뺀다. 새 할 일이 보이면 우선순위 자리에 추가한다.
+3. 설계를 잠그거나 바꾸면 `docs/mvp.md`. 배포 경로면 `docs/ship.md`.
+
+적지 않음: 오타, 테스트만, 구조 안 바뀌는 리팩터.
+
+새 업글: `upgradeStats.ts` → `upgradeRules.ts` → `src/data/levelUpCards.ts`. `game` / `resolve` / `specials`에 카드별 `if` 넣지 않음.

@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { boardFromColors, getTile, makeTile, resetTileIds, setTile } from "./board.ts";
 import { mulberry32 } from "./rng.ts";
+import type { ResolveResult } from "./events.ts";
 import { resolveBoard } from "./resolve.ts";
 import { COLS, ROWS, type Tile } from "./types.ts";
 import { defaultUpgradeStats } from "./upgrades.ts";
@@ -209,7 +210,131 @@ describe("resolveBoard", () => {
     expect(specialsOn(board).some((item) => item.startsWith("lightning@"))).toBe(true);
     expect(leftoverPlain(board, "lightning")).toBe(true);
   });
+
+  it("fires both specials on a swap combo without a color match", () => {
+    const board = noMatchGrid();
+    setTile(board, { r: 3, c: 3 }, makeTile(0, "bomb"));
+    setTile(board, { r: 3, c: 4 }, makeTile(1, "bomb"));
+    const result = resolveBoard(board, mulberry32(1), { r: 3, c: 4 }, defaultUpgradeStats(), {
+      a: { r: 3, c: 3 },
+      b: { r: 3, c: 4 },
+    });
+    const bombs = result.events.filter((e) => e.type === "activate" && e.special === "bomb");
+    expect(bombs).toHaveLength(2);
+    expect(result.chain).toBeGreaterThanOrEqual(1);
+    expect(clearedCells(result).some((p) => p.r === 1 && p.c === 1)).toBe(true);
+  });
+
+  it("adds extra lines on line+line swap", () => {
+    const board = noMatchGrid();
+    setTile(board, { r: 2, c: 1 }, makeTile(0, "lineH"));
+    setTile(board, { r: 2, c: 2 }, makeTile(1, "lineH"));
+    const result = resolveBoard(board, mulberry32(1), { r: 2, c: 2 }, defaultUpgradeStats(), {
+      a: { r: 2, c: 1 },
+      b: { r: 2, c: 2 },
+    });
+    const rows = result.events
+      .filter((e) => e.type === "fxLine" && e.dir === "h")
+      .map((e) => e.index);
+    expect(rows).toContain(2);
+    expect(rows.some((index) => index !== 2)).toBe(true);
+  });
+
+  it("does not give combo extras to a spatially chained special", () => {
+    const board = noMatchGrid();
+    setTile(board, { r: 4, c: 4 }, makeTile(0, "bomb"));
+    setTile(board, { r: 4, c: 5 }, makeTile(1, "lineH"));
+    setTile(board, { r: 3, c: 4 }, makeTile(2, "lineV"));
+    const result = resolveBoard(board, mulberry32(1), { r: 4, c: 5 }, defaultUpgradeStats(), {
+      a: { r: 4, c: 4 },
+      b: { r: 4, c: 5 },
+    });
+    const vLines = result.events
+      .filter((e) => e.type === "fxLine" && e.dir === "v")
+      .map((e) => e.index);
+    expect(vLines).toEqual([4]);
+  });
+
+  it("adds lightning targets on lightning+lightning swap", () => {
+    const board = noMatchGrid();
+    setTile(board, { r: 0, c: 0 }, makeTile(0, "lightning"));
+    setTile(board, { r: 0, c: 1 }, makeTile(1, "lightning"));
+    const result = resolveBoard(board, mulberry32(1), { r: 0, c: 1 }, defaultUpgradeStats(), {
+      a: { r: 0, c: 0 },
+      b: { r: 0, c: 1 },
+    });
+    const strikes = result.events.filter((e) => e.type === "strike");
+    expect(strikes.length).toBeGreaterThanOrEqual(8);
+  });
+
+  it("detonates sub-bombs on bomb+lightning strike cells", () => {
+    const board = noMatchGrid();
+    setTile(board, { r: 3, c: 3 }, makeTile(0, "bomb"));
+    setTile(board, { r: 3, c: 4 }, makeTile(1, "lightning"));
+    const result = resolveBoard(board, mulberry32(1), { r: 3, c: 4 }, defaultUpgradeStats(), {
+      a: { r: 3, c: 3 },
+      b: { r: 3, c: 4 },
+    });
+    const strikes = result.events.filter((e) => e.type === "strike");
+    expect(strikes.length).toBeGreaterThanOrEqual(1);
+    const bombAt = result.events
+      .filter((e) => e.type === "activate" && e.special === "bomb")
+      .map((e) => `${e.at.r},${e.at.c}`);
+    for (const strike of strikes) {
+      expect(bombAt).toContain(`${strike.to.r},${strike.to.c}`);
+    }
+  });
+
+  it("fires sub-lines on line+lightning strike cells", () => {
+    const board = noMatchGrid();
+    setTile(board, { r: 2, c: 2 }, makeTile(0, "lineH"));
+    setTile(board, { r: 2, c: 3 }, makeTile(1, "lightning"));
+    const result = resolveBoard(board, mulberry32(1), { r: 2, c: 3 }, defaultUpgradeStats(), {
+      a: { r: 2, c: 2 },
+      b: { r: 2, c: 3 },
+    });
+    const strikes = result.events.filter((e) => e.type === "strike");
+    expect(strikes.length).toBeGreaterThanOrEqual(1);
+    const rows = result.events
+      .filter((e) => e.type === "fxLine" && e.dir === "h")
+      .map((e) => e.index);
+    for (const strike of strikes) {
+      expect(rows).toContain(strike.to.r);
+    }
+  });
+
+  it("does not seed sub-bombs from a chained lightning", () => {
+    const board = noMatchGrid();
+    setTile(board, { r: 0, c: 0 }, makeTile(0, "lightning"));
+    setTile(board, { r: 0, c: 1 }, makeTile(1, "bomb"));
+    setTile(board, { r: 7, c: 7 }, makeTile(2, "lightning"));
+    const result = resolveBoard(board, mulberry32(1), { r: 0, c: 1 }, defaultUpgradeStats(), {
+      a: { r: 0, c: 0 },
+      b: { r: 0, c: 1 },
+    });
+    const lightningActivates = result.events.filter(
+      (e) => e.type === "activate" && e.special === "lightning",
+    );
+    expect(lightningActivates.length).toBe(2);
+    const bombActivates = result.events.filter((e) => e.type === "activate" && e.special === "bomb");
+    expect(bombActivates).toHaveLength(2);
+  });
 });
+
+function noMatchGrid() {
+  resetTileIds();
+  const board = boardFromColors([]);
+  for (let r = 0; r < ROWS; r++) {
+    for (let c = 0; c < COLS; c++) {
+      setTile(board, { r, c }, makeTile((r + 2 * c) % 5));
+    }
+  }
+  return board;
+}
+
+function clearedCells(result: ResolveResult) {
+  return result.events.flatMap((e) => (e.type === "clear" ? e.cells : []));
+}
 
 function specialsOn(board: (Tile | null)[][]) {
   const found: string[] = [];

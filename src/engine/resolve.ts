@@ -5,11 +5,13 @@ import {
   type Tile,
   inBounds,
   posKey,
+  samePos,
   specialFromMatch,
 } from "./types.ts";
 import { getTile, makeTile, setTile } from "./board.ts";
 import { findMatches } from "./match.ts";
 import { settleBoard } from "./gravity.ts";
+import { bothSpecials, comboRecipe, comboStatsForPair } from "./combo.ts";
 import { cellsForSpecial, specialActivateFx } from "./specials.ts";
 import type { GameEvent, ResolveResult } from "./events.ts";
 import type { Rng } from "./rng.ts";
@@ -19,11 +21,18 @@ import { defaultUpgradeStats, type UpgradeStats } from "./upgradeStats.ts";
 const MAX_STEPS = 80;
 const MAX_ACTIVATES = 80;
 
+export type SwapPair = {
+  a: Pos;
+  b: Pos;
+};
+
 type ActivateJob = {
   at: Pos;
   special: Special;
   plain?: boolean;
   echoDepth?: number;
+  statsOverride?: UpgradeStats;
+  strikeActivate?: Exclude<Special, "none">;
 };
 
 type EchoJob = {
@@ -61,7 +70,9 @@ function activateSpecials(
     const ak = `${posKey(next.at)}:${next.special}:${next.plain ? "p" : "u"}`;
     if (seenActivate.has(ak)) continue;
     seenActivate.add(ak);
-    const applyStats = next.plain ? defaultUpgradeStats() : stats;
+    const applyStats = next.plain
+      ? defaultUpgradeStats()
+      : (next.statsOverride ?? stats);
     const echoDepth = next.echoDepth ?? 0;
     fxEvents.push({ type: "activate", at: next.at, special: next.special });
     addCell(clearSet, toClear, next.at);
@@ -81,6 +92,13 @@ function activateSpecials(
         });
       }
       addCell(clearSet, toClear, cell);
+    }
+    if (next.strikeActivate) {
+      for (const cell of struck) {
+        if (samePos(cell, next.at)) continue;
+        if (jobQueuedOrSeen(queue, seenActivate, cell, next.strikeActivate)) continue;
+        queue.push({ at: cell, special: next.strikeActivate, plain: true });
+      }
     }
     const color = getTile(board, next.at)?.color ?? 0;
     for (const burst of collectEchoBursts({
@@ -158,15 +176,104 @@ function spawnSpecialForMatch(
   return spawnFromThreeMatch(cells, origin, rng, stats);
 }
 
+function jobQueuedOrSeen(
+  queue: ActivateJob[],
+  seenActivate: Set<string>,
+  at: Pos,
+  special: Special,
+): boolean {
+  if (queue.some((job) => samePos(job.at, at) && job.special === special)) return true;
+  const key = posKey(at);
+  return seenActivate.has(`${key}:${special}:p`) || seenActivate.has(`${key}:${special}:u`);
+}
+
+function comboActivateJobs(
+  board: (Tile | null)[][],
+  swap: SwapPair | undefined,
+  stats: UpgradeStats,
+): ActivateJob[] | null {
+  if (!swap) return null;
+  const tileA = getTile(board, swap.a);
+  const tileB = getTile(board, swap.b);
+  if (!tileA || !tileB || !bothSpecials(tileA.special, tileB.special)) return null;
+  const recipe = comboRecipe(tileA.special, tileB.special);
+  const comboStats = recipe ? comboStatsForPair(stats, tileA.special, tileB.special) : stats;
+  const strikeActivate = recipe?.strikeActivate;
+  return [
+    {
+      at: swap.a,
+      special: tileA.special,
+      plain: Boolean(tileA.plain),
+      echoDepth: tileA.echoDepth ?? 0,
+      statsOverride: comboStats,
+      strikeActivate: tileA.special === "lightning" ? strikeActivate : undefined,
+    },
+    {
+      at: swap.b,
+      special: tileB.special,
+      plain: Boolean(tileB.plain),
+      echoDepth: tileB.echoDepth ?? 0,
+      statsOverride: comboStats,
+      strikeActivate: tileB.special === "lightning" ? strikeActivate : undefined,
+    },
+  ];
+}
+
+function settleEvents(board: (Tile | null)[][], rng: Rng): GameEvent[] {
+  const events: GameEvent[] = [];
+  const { falls, drops } = settleBoard(board, rng);
+  if (falls.length) events.push({ type: "fall", moves: falls });
+  if (drops.length) events.push({ type: "dropIn", drops: drops });
+  return events;
+}
+
 export function resolveBoard(
   board: (Tile | null)[][],
   rng: Rng,
   lastMoved?: Pos,
   stats: UpgradeStats = defaultUpgradeStats(),
+  swap?: SwapPair,
 ): ResolveResult {
   const events: GameEvent[] = [];
   let cleared = 0;
   let chain = 0;
+
+  const comboJobs = comboActivateJobs(board, swap, stats);
+  if (comboJobs) {
+    chain += 1;
+    events.push({ type: "chain", value: chain });
+    const toClear: Pos[] = [];
+    const clearSet = new Set<string>();
+    const first = activateSpecials(board, rng, comboJobs, clearSet, toClear, stats);
+    events.push({ type: "highlight", cells: [...toClear] });
+    events.push(...first.fxEvents);
+    for (const cell of toClear) setTile(board, cell, null);
+    if (toClear.length) {
+      events.push({ type: "clear", cells: [...toClear] });
+      cleared += toClear.length;
+    }
+    if (first.echoes.length) {
+      const planted = plantEchoes(board, first.echoes);
+      events.push(...planted.events);
+      events.push(...settleEvents(board, rng));
+      if (shouldAutoDetonate(stats) && planted.ids.size) {
+        const echoJobs = jobsForTileIds(board, planted.ids);
+        if (echoJobs.length) {
+          const echoClear: Pos[] = [];
+          const echoSet = new Set<string>();
+          const boom = activateSpecials(board, rng, echoJobs, echoSet, echoClear, stats);
+          events.push(...boom.fxEvents);
+          const extra = clearActivated(board, echoClear);
+          events.push(...extra.events);
+          cleared += extra.cleared;
+          events.push(...settleEvents(board, rng));
+        }
+      }
+    } else {
+      events.push(...settleEvents(board, rng));
+    }
+    lastMoved = undefined;
+  }
 
   for (let step = 0; step < MAX_STEPS; step++) {
     const matches = findMatches(board, lastMoved);
