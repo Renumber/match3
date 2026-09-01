@@ -187,6 +187,54 @@ function jobQueuedOrSeen(
   return seenActivate.has(`${key}:${special}:p`) || seenActivate.has(`${key}:${special}:u`);
 }
 
+const ORTHO_DELTAS: Pos[] = [
+  { r: -1, c: 0 },
+  { r: 0, c: 1 },
+  { r: 1, c: 0 },
+  { r: 0, c: -1 },
+];
+
+function orthogonalNeighbors(at: Pos): Pos[] {
+  const cells: Pos[] = [];
+  for (const delta of ORTHO_DELTAS) {
+    const next = { r: at.r + delta.r, c: at.c + delta.c };
+    if (inBounds(next)) cells.push(next);
+  }
+  return cells;
+}
+
+function jobFromTile(at: Pos, tile: Tile, extras?: Partial<ActivateJob>): ActivateJob {
+  return {
+    at,
+    special: tile.special,
+    plain: Boolean(tile.plain),
+    echoDepth: tile.echoDepth ?? 0,
+    ...extras,
+  };
+}
+
+function comboJobsFromTiles(
+  a: Pos,
+  tileA: Tile,
+  b: Pos,
+  tileB: Tile,
+  stats: UpgradeStats,
+): ActivateJob[] {
+  const recipe = comboRecipe(tileA.special, tileB.special);
+  const comboStats = recipe ? comboStatsForPair(stats, tileA.special, tileB.special) : stats;
+  const strikeActivate = recipe?.strikeActivate;
+  return [
+    {
+      ...jobFromTile(a, tileA, { statsOverride: comboStats }),
+      strikeActivate: tileA.special === "lightning" ? strikeActivate : undefined,
+    },
+    {
+      ...jobFromTile(b, tileB, { statsOverride: comboStats }),
+      strikeActivate: tileB.special === "lightning" ? strikeActivate : undefined,
+    },
+  ];
+}
+
 function comboActivateJobs(
   board: (Tile | null)[][],
   swap: SwapPair | undefined,
@@ -196,27 +244,58 @@ function comboActivateJobs(
   const tileA = getTile(board, swap.a);
   const tileB = getTile(board, swap.b);
   if (!tileA || !tileB || !bothSpecials(tileA.special, tileB.special)) return null;
-  const recipe = comboRecipe(tileA.special, tileB.special);
-  const comboStats = recipe ? comboStatsForPair(stats, tileA.special, tileB.special) : stats;
-  const strikeActivate = recipe?.strikeActivate;
-  return [
-    {
-      at: swap.a,
-      special: tileA.special,
-      plain: Boolean(tileA.plain),
-      echoDepth: tileA.echoDepth ?? 0,
-      statsOverride: comboStats,
-      strikeActivate: tileA.special === "lightning" ? strikeActivate : undefined,
-    },
-    {
-      at: swap.b,
-      special: tileB.special,
-      plain: Boolean(tileB.plain),
-      echoDepth: tileB.echoDepth ?? 0,
-      statsOverride: comboStats,
-      strikeActivate: tileB.special === "lightning" ? strikeActivate : undefined,
-    },
-  ];
+  return comboJobsFromTiles(swap.a, tileA, swap.b, tileB, stats);
+}
+
+function autoDetonateJobs(
+  board: (Tile | null)[][],
+  origins: Pos[],
+  stats: UpgradeStats,
+): ActivateJob[] {
+  const pending: Pos[] = [];
+  const pendingKeys = new Set<string>();
+  for (const at of origins) {
+    const tile = getTile(board, at);
+    if (!tile || tile.special === "none") continue;
+    const key = posKey(at);
+    if (pendingKeys.has(key)) continue;
+    pendingKeys.add(key);
+    pending.push(at);
+  }
+
+  const used = new Set<string>();
+  const jobs: ActivateJob[] = [];
+
+  function takePartner(at: Pos, preferPending: boolean): Pos | undefined {
+    for (const neighbor of orthogonalNeighbors(at)) {
+      const key = posKey(neighbor);
+      if (used.has(key)) continue;
+      const tile = getTile(board, neighbor);
+      if (!tile || tile.special === "none") continue;
+      if (preferPending && !pendingKeys.has(key)) continue;
+      return neighbor;
+    }
+    return undefined;
+  }
+
+  for (const at of pending) {
+    if (used.has(posKey(at))) continue;
+    const tile = getTile(board, at);
+    if (!tile) continue;
+    const partner = takePartner(at, true) ?? takePartner(at, false);
+    if (partner) {
+      const other = getTile(board, partner);
+      if (other) {
+        jobs.push(...comboJobsFromTiles(at, tile, partner, other, stats));
+        used.add(posKey(at));
+        used.add(posKey(partner));
+        continue;
+      }
+    }
+    jobs.push(jobFromTile(at, tile));
+    used.add(posKey(at));
+  }
+  return jobs;
 }
 
 function settleEvents(board: (Tile | null)[][], rng: Rng): GameEvent[] {
@@ -257,7 +336,11 @@ export function resolveBoard(
       events.push(...planted.events);
       events.push(...settleEvents(board, rng));
       if (shouldAutoDetonate(stats) && planted.ids.size) {
-        const echoJobs = jobsForTileIds(board, planted.ids);
+        const echoJobs = autoDetonateJobs(
+          board,
+          jobsForTileIds(board, planted.ids).map((job) => job.at),
+          stats,
+        );
         if (echoJobs.length) {
           const echoClear: Pos[] = [];
           const echoSet = new Set<string>();
@@ -336,7 +419,11 @@ export function resolveBoard(
     if (shouldAutoDetonate(stats) && spawns.length) {
       const extraClear: Pos[] = [];
       const extraSet = new Set<string>();
-      const detonateQueue = spawns.map((spawn) => ({ at: spawn.at, special: spawn.special }));
+      const detonateQueue = autoDetonateJobs(
+        board,
+        spawns.map((spawn) => spawn.at),
+        stats,
+      );
       const second = activateSpecials(board, rng, detonateQueue, extraSet, extraClear, stats);
       const newlyCleared = extraClear.filter((cell) => getTile(board, cell));
       if (newlyCleared.length) {
@@ -361,7 +448,11 @@ export function resolveBoard(
         if (settled.drops.length) events.push({ type: "dropIn", drops: settled.drops });
         pending = [];
         if (!shouldAutoDetonate(stats) || !planted.ids.size) break;
-        const echoJobs = jobsForTileIds(board, planted.ids);
+        const echoJobs = autoDetonateJobs(
+          board,
+          jobsForTileIds(board, planted.ids).map((job) => job.at),
+          stats,
+        );
         if (!echoJobs.length) break;
         const echoClear: Pos[] = [];
         const echoSet = new Set<string>();
