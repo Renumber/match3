@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { boardFromColors, emptyBoard, makeTile, resetTileIds, setTile } from "./board.ts";
+import { boardFromColors, emptyBoard, makeBlocker, makeTile, resetTileIds, setTile } from "./board.ts";
 import { findMatches, hasMatch, hasPossibleSwap, shuffleUntilPlayable } from "./match.ts";
 import { mulberry32 } from "./rng.ts";
 import { COLS, ROWS } from "./types.ts";
@@ -63,6 +63,13 @@ describe("findMatches", () => {
     );
     expect(matches.some((m) => m.kind === "bomb")).toBe(true);
     expect(matches.some((m) => m.kind === "lineH")).toBe(false);
+  });
+
+  it("does not match through a golem core", () => {
+    const board = grid(["00000000"]);
+    setTile(board, { r: 0, c: 3 }, makeBlocker());
+    const matches = findMatches(board);
+    expect(matches.every((m) => !m.cells.some((p) => p.c === 3 && p.r === 0))).toBe(true);
   });
 });
 

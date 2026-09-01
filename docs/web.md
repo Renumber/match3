@@ -32,6 +32,9 @@
 
 ```text
 src/
+  data/
+    bosses.ts        BossDef + 기믹 목록. game에 보스명 if 없음
+    levelUpCards.ts
   engine/
     types.ts
     rng.ts
@@ -42,6 +45,7 @@ src/
     combo.ts         6종 레시피 데이터
     events.ts
     resolve.ts       매치 → 생성 → 발동 → 중력 루프
+    boss.ts          기믹 배치·피해. 새 타입은 여기 case
     game.ts          trySwap, 스냅샷
     fsm.ts           Idle / Resolving / LevelUp / Bonus / Burst / Win / Lose
     run.ts           Moves, XP, 업글, 보스 HP

@@ -1,5 +1,7 @@
 import { describe, expect, it } from "vitest";
+import { STAGE1_BOSS } from "../data/bosses.ts";
 import { getTile, makeTile, resetTileIds, setTile } from "./board.ts";
+import { placeBossTiles } from "./boss.ts";
 import { Game } from "./game.ts";
 import { hasMatch, hasPossibleSwap } from "./match.ts";
 import { STARTING_MOVES, STAGE1_BOSS_ARMOR } from "./run.ts";
@@ -37,6 +39,26 @@ describe("Game.trySwap special combo", () => {
     expect(out.bounced).toBe(false);
     expect(game.moves).toBe(moves - 1);
     expect(out.result?.events.some((e) => e.type === "activate")).toBe(true);
+  });
+
+  it("rejects swaps into a golem core", () => {
+    const game = new Game(1);
+    const core = { r: 3, c: 3 };
+    expect(getTile(game.board, core)?.blocker).toBe(true);
+    const out = game.trySwap(core, { r: 3, c: 2 });
+    expect(out.bounced).toBe(true);
+    expect(getTile(game.board, core)?.blocker).toBe(true);
+  });
+
+  it("breaks golem cores with a special", () => {
+    const game = new Game(1);
+    game.board = noMatchGrid();
+    placeBossTiles(game.board, STAGE1_BOSS);
+    setTile(game.board, { r: 3, c: 1 }, makeTile(0, "lineH"));
+    setTile(game.board, { r: 3, c: 2 }, makeTile(1, "lightning"));
+    game.trySwap({ r: 3, c: 1 }, { r: 3, c: 2 });
+    expect(getTile(game.board, { r: 3, c: 3 })?.blocker).toBeFalsy();
+    expect(getTile(game.board, { r: 3, c: 4 })?.blocker).toBeFalsy();
   });
 
   it("still bounces special into a normal tile with no match", () => {
@@ -163,5 +185,11 @@ describe("Game boss", () => {
     expect(game.ownedCardIds).toHaveLength(0);
     expect(hasMatch(game.board)).toBe(false);
     expect(hasPossibleSwap(game.board)).toBe(true);
+  });
+
+  it("uses the given boss def for tiles and armor", () => {
+    const game = new Game(1, { id: "bare", name: "맨몸", hp: 80, gimmicks: [] });
+    expect(game.bossArmorMax).toBe(0);
+    expect(getTile(game.board, { r: 3, c: 3 })?.blocker).toBeFalsy();
   });
 });

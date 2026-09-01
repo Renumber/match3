@@ -36,7 +36,7 @@ async function boot(): Promise<void> {
     hud.setMoves(game.moves);
     hud.setLevel(game.level);
     hud.setXp(game.xp, game.xpToNext);
-    hud.setBoss(game.bossName, game.bossHp, game.bossMaxHp, game.bossArmor);
+    hud.setBoss(game.bossName, game.bossHp, game.bossMaxHp, game.bossArmor, game.bossArmorMax);
     hud.setUpgrades(summarizeOwnedCards(game.ownedCardIds));
   };
 
@@ -79,7 +79,8 @@ async function boot(): Promise<void> {
   board = mountBoard(app, game, {
     setChain: hud.setChain,
     setCleared: hud.setCleared,
-    setBossHp: (current, max) => hud.setBoss(game.bossName, current, max, game.bossArmor),
+    setBossHp: (current, max) =>
+      hud.setBoss(game.bossName, current, max, game.bossArmor, game.bossArmorMax),
     onResolved: () => {
       refreshHud();
       syncOverlays();

@@ -14,3 +14,4 @@ alwaysApply: true
 적지 않음: 오타, 테스트만, 구조 안 바뀌는 리팩터.
 
 새 업글: `upgradeStats.ts` → `upgradeRules.ts` → `src/data/levelUpCards.ts`. `game` / `resolve` / `specials`에 카드별 `if` 넣지 않음.
+새 보스: `src/data/bosses.ts` → `engine/boss.ts`. `game` / `resolve` / `specials`에 보스명 `if` 넣지 않음.

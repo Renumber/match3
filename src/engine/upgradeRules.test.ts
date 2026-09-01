@@ -20,10 +20,10 @@ describe("upgrade rule registry", () => {
     stats.chainMoveThreshold = 15;
     stats.chainMoveBonus = 1;
     stats.moveOnSpecial = 1;
-    const chainOnly = extraMovesAfterResolve({ events: [], cleared: 0, chain: 15 }, stats);
+    const chainOnly = extraMovesAfterResolve({ events: [], cleared: 0, chain: 15, blockersCleared: 0 }, stats);
     expect(chainOnly).toBe(1);
     const both = extraMovesAfterResolve(
-      { events: [{ type: "activate", at: { r: 0, c: 0 }, special: "bomb" }], cleared: 4, chain: 15 },
+      { events: [{ type: "activate", at: { r: 0, c: 0 }, special: "bomb" }], cleared: 4, chain: 15, blockersCleared: 0 },
       stats,
     );
     expect(both).toBe(2);

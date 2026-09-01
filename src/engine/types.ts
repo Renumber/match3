@@ -19,7 +19,12 @@ export type Tile = {
   special: Special;
   plain?: boolean;
   echoDepth?: number;
+  blocker?: boolean;
 };
+
+export function isBlocker(tile: Tile | null | undefined): boolean {
+  return Boolean(tile?.blocker);
+}
 
 export type MatchKind = "three" | "lineH" | "lineV" | "bomb" | "lightning";
 

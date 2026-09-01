@@ -59,14 +59,14 @@ function collectRuns(board: (Tile | null)[][]): Run[] {
     let c = 0;
     while (c < COLS) {
       const start = getTile(board, { r, c });
-      if (!start) {
+      if (!start || start.blocker) {
         c += 1;
         continue;
       }
       let c2 = c + 1;
       while (c2 < COLS) {
         const tile = getTile(board, { r, c: c2 });
-        if (!tile || tile.color !== start.color) break;
+        if (!tile || tile.blocker || tile.color !== start.color) break;
         c2 += 1;
       }
       if (c2 - c >= 3) {
@@ -82,14 +82,14 @@ function collectRuns(board: (Tile | null)[][]): Run[] {
     let r = 0;
     while (r < ROWS) {
       const start = getTile(board, { r, c });
-      if (!start) {
+      if (!start || start.blocker) {
         r += 1;
         continue;
       }
       let r2 = r + 1;
       while (r2 < ROWS) {
         const tile = getTile(board, { r: r2, c });
-        if (!tile || tile.color !== start.color) break;
+        if (!tile || tile.blocker || tile.color !== start.color) break;
         r2 += 1;
       }
       if (r2 - r >= 3) {
@@ -176,6 +176,7 @@ export function findMatches(board: (Tile | null)[][], lastMoved?: Pos): MatchGro
       const d = getTile(board, { r: r + 1, c });
       const e = getTile(board, { r: r + 1, c: c + 1 });
       if (!a || !b || !d || !e) continue;
+      if (a.blocker || b.blocker || d.blocker || e.blocker) continue;
       if (a.color !== b.color || a.color !== d.color || a.color !== e.color) continue;
       const cells: Pos[] = [
         { r, c },
@@ -217,7 +218,7 @@ export function hasPossibleSwap(board: (Tile | null)[][]): boolean {
     for (let c = 0; c < COLS; c++) {
       const a: Pos = { r, c };
       const tileA = getTile(board, a);
-      if (!tileA) continue;
+      if (!tileA || tileA.blocker) continue;
       const neighbors: Pos[] = [
         { r, c: c + 1 },
         { r: r + 1, c },
@@ -225,7 +226,7 @@ export function hasPossibleSwap(board: (Tile | null)[][]): boolean {
       for (const b of neighbors) {
         if (!inBounds(b)) continue;
         const tileB = getTile(board, b);
-        if (!tileB) continue;
+        if (!tileB || tileB.blocker) continue;
         if (bothSpecials(tileA.special, tileB.special)) return true;
         swapTiles(board, a, b);
         const matched = hasMatch(board);
@@ -243,7 +244,7 @@ export function shuffleUntilPlayable(board: (Tile | null)[][], rng: Rng): void {
   for (let r = 0; r < ROWS; r++) {
     for (let c = 0; c < COLS; c++) {
       const tile = getTile(board, { r, c });
-      if (!tile) continue;
+      if (!tile || tile.blocker) continue;
       slots.push({ r, c });
       tiles.push(tile);
     }
@@ -263,7 +264,7 @@ export function shuffleUntilPlayable(board: (Tile | null)[][], rng: Rng): void {
     for (let r = 0; r < ROWS; r++) {
       for (let c = 0; c < COLS; c++) {
         const tile = getTile(board, { r, c });
-        if (!tile) continue;
+        if (!tile || tile.blocker) continue;
         tile.color = randomColor(rng, board, { r, c });
       }
     }

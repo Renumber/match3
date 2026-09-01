@@ -34,7 +34,7 @@
 | 8×8, 색 5, Moves 40, 인접 스왑, 매치 없으면 튕김. 특수끼리 스왑은 매치 없어도 발동 | Bonus Chain, Final Burst, Critical Mass |
 | 일반 스왑만 Move -1. 교착이면 셔플 | `fsm.ts` 파일. Bonus 단계는 없음 |
 | XP → 레벨업 3택 | |
-| 보스 골렘 HP 300, 갑옷 4. 피해 = 지운 타일 − 갑옷. 특수 발동이 갑옷 −1. 처치 승 / Moves 0 패. 결과 화면 | |
+| 보스 골렘 HP 300, 갑옷 4, 중앙 2×2 핵. 피해 = 지운 타일 − 갑옷. 특수/핵이 갑옷 −1. 처치 승 / Moves 0 패 | |
 
 ### 엔진 `src/engine/`
 
@@ -42,14 +42,15 @@
 - 특수 3종: Line(가로/세로), Bomb(기본 3×3, 반경 캡 3), Lightning(기본 타겟 2, 특수 우선).
 - resolve: 매치 → 생성 → 발동 → 중력. 범위 안 특수는 Activate. 특수끼리 스왑은 `combo.ts` 레시피. 자동 점화도 직교 인접 특수에 같은 레시피. Bomb+Lightning / Line+Lightning은 번개 타격 칸에서 서브 폭탄·라인 발동. 스텝 상한 80.
 - 업글은 `upgradeStats` 숫자/플래그 + `upgradeRules` 훅. `game` / `resolve` / `specials`에 카드별 `if` 없음.
-- 런: Moves 40, 보스 골렘 HP 300 / 갑옷 4. 특수 발동이 갑옷을 깨고, 지운 타일 − 갑옷 = 피해. 페이즈 `idle` / `levelUp` / `win` / `lose`. 교착 셔플.
-- vitest: match, gravity, resolve, specials, combo, game, run, levelUp, upgrades, upgradeRules, upgradeInfo, rng.
+- 보스는 `data/bosses.ts` 기믹 목록 + `engine/boss.ts` 적용. `game`에 보스명 `if` 없음. 새 기믹은 def 추가 + `boss.ts` case.
+- 런: Moves 40, 보스 골렘 HP 300 / 갑옷 4 / 중앙 2×2 핵. 특수·핵이 갑옷을 깨고, 지운 타일 − 갑옷 = 피해. 페이즈 `idle` / `levelUp` / `win` / `lose`. 교착 셔플.
+- vitest: match, gravity, resolve, specials, combo, game, run, boss, levelUp, upgrades, upgradeRules, upgradeInfo, rng.
 
 ### 보드 / HUD
 
 - PixiJS v8. 이벤트 타임라인 재생 (스왑, 튕김, 하이라이트, 발동, 라인/폭탄/번개 FX, 낙하).
 - 입력: 탭-탭, 스와이프. resolve 중 `busy`.
-- HUD: Moves, Level, Chain, Cleared, XP 바, 보스 바(이름+갑옷+HP), 보유 카드 칩(한 줄 가로 스크롤).
+- HUD: Moves, Level, Chain, Cleared, XP 줄에 보유 카드 칩(가로 스크롤). 보스 바(이름+갑옷+HP). 페이지 스크롤 없음.
 - 레벨업 모달, 승/패 결과, 도감(카드/이번 런 스탯).
 - Amplify: `amplify.yml` (`npm test` + `vite build`).
 
@@ -76,6 +77,16 @@
 ---
 
 ## 로그
+
+### 2026-09-01 — 보스 기믹 카탈로그
+
+- 골렘 갑옷/핵이 `game.ts`에 박혀 있으면 다음 보스마다 그 파일을 건드린다.
+- `data/bosses.ts` 기믹 목록 + `engine/boss.ts` 적용. 카드와 같은 길. 플레이 숫자는 그대로.
+
+### 2026-09-01 — 골렘 핵, 칩을 XP 줄에
+
+- 카드 칩이 새 줄을 만들어서 페이지가 스크롤됐다. XP 줄에 붙이고 `overflow: hidden`.
+- 보드 중앙 2×2 핵. 스왑/매치 불가, 특수만 파괴. 핵 파괴도 갑옷을 깨움. 번개가 핵 우선.
 
 ### 2026-09-01 — 골렘 갑옷
 

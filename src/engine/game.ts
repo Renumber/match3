@@ -1,12 +1,14 @@
 import { bothSpecials } from "./combo.ts";
 import { createFilledBoard, getTile, swapTiles } from "./board.ts";
+import { applyResolveToBoss, placeBossTiles } from "./boss.ts";
 import { hasMatch, hasPossibleSwap, shuffleUntilPlayable } from "./match.ts";
 import { mulberry32, type Rng } from "./rng.ts";
 import { resolveBoard } from "./resolve.ts";
 import { isAdjacent, type Pos, type Tile } from "./types.ts";
 import type { ResolveResult } from "./events.ts";
+import { STAGE1_BOSS, type BossDef } from "../data/bosses.ts";
 import type { LevelUpCard } from "../data/levelUpCards.ts";
-import { addXp, activateCount, applyBossHit, createRun, type RunProgress } from "./run.ts";
+import { addXp, createRun, type RunProgress } from "./run.ts";
 import {
   extraMovesAfterResolve,
   extraMovesOnLevel,
@@ -22,12 +24,14 @@ export type SwapOutcome = {
   result: ResolveResult | null;
 };
 
-function createStableBoard(rng: Rng): (Tile | null)[][] {
+function createStableBoard(rng: Rng, boss: BossDef): (Tile | null)[][] {
   for (let i = 0; i < 48; i++) {
     const board = createFilledBoard(rng);
+    placeBossTiles(board, boss);
     if (!hasMatch(board) && hasPossibleSwap(board)) return board;
   }
   const board = createFilledBoard(rng);
+  placeBossTiles(board, boss);
   resolveBoard(board, rng);
   if (!hasPossibleSwap(board)) shuffleUntilPlayable(board, rng);
   return board;
@@ -36,6 +40,7 @@ function createStableBoard(rng: Rng): (Tile | null)[][] {
 export class Game {
   board: (Tile | null)[][];
   rng: Rng;
+  boss: BossDef;
   lastChain = 0;
   totalCleared = 0;
   lastDamage = 0;
@@ -45,10 +50,11 @@ export class Game {
   ownedCardIds: string[] = [];
   offeredCards: LevelUpCard[] = [];
 
-  constructor(seed = 1) {
+  constructor(seed = 1, boss: BossDef = STAGE1_BOSS) {
+    this.boss = boss;
     this.rng = mulberry32(seed);
-    this.board = createStableBoard(this.rng);
-    this.run = createRun();
+    this.board = createStableBoard(this.rng, boss);
+    this.run = createRun(boss);
     this.upgrades = defaultUpgradeStats();
   }
 
@@ -88,6 +94,10 @@ export class Game {
     return this.run.bossArmor;
   }
 
+  get bossArmorMax(): number {
+    return this.run.bossArmorMax;
+  }
+
   grantXp(amount: number): void {
     const before = this.run.level;
     addXp(this.run, amount);
@@ -98,12 +108,12 @@ export class Game {
 
   restart(seed = Date.now()): void {
     this.rng = mulberry32(seed);
-    this.board = createStableBoard(this.rng);
+    this.board = createStableBoard(this.rng, this.boss);
     this.lastChain = 0;
     this.totalCleared = 0;
     this.lastDamage = 0;
     this.phase = "idle";
-    this.run = createRun();
+    this.run = createRun(this.boss);
     this.upgrades = defaultUpgradeStats();
     this.ownedCardIds = [];
     this.offeredCards = [];
@@ -130,6 +140,9 @@ export class Game {
     if (!tileA || !tileB) {
       return { bounced: true, result: null };
     }
+    if (tileA.blocker || tileB.blocker) {
+      return { bounced: true, result: null };
+    }
     const specialSwap = bothSpecials(tileA.special, tileB.special);
 
     swapTiles(this.board, a, b);
@@ -138,7 +151,7 @@ export class Game {
       this.lastDamage = 0;
       return {
         bounced: true,
-        result: { events: [{ type: "bounce", a, b }], cleared: 0, chain: 0 },
+        result: { events: [{ type: "bounce", a, b }], cleared: 0, chain: 0, blockersCleared: 0 },
       };
     }
 
@@ -152,7 +165,7 @@ export class Game {
     this.run.moves -= 1;
     this.lastChain = result.chain;
     this.totalCleared += result.cleared;
-    this.lastDamage = applyBossHit(this.run, result.cleared, activateCount(result.events));
+    this.lastDamage = applyResolveToBoss(this.run, result);
     this.grantXp(xpFromClears(result.cleared, this.upgrades));
     this.run.moves += extraMovesAfterResolve(result, this.upgrades);
     this.syncPhase();

@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
+import { applyBossHit } from "./boss.ts";
 import {
   addXp,
-  applyBossHit,
   createRun,
   STAGE1_BOSS_ARMOR,
   STAGE1_BOSS_HP,
@@ -55,7 +55,7 @@ describe("run boss", () => {
   it("subtracts remaining armor from cleared tiles", () => {
     const run = createRun();
     run.bossArmor = 4;
-    expect(applyBossHit(run, 12, 0)).toBe(8);
+    expect(applyBossHit(run, { cleared: 12 })).toBe(8);
     expect(run.bossHp).toBe(STAGE1_BOSS_HP - 8);
     expect(run.bossArmor).toBe(4);
   });
@@ -63,7 +63,7 @@ describe("run boss", () => {
   it("cracks armor from special activates before absorbing", () => {
     const run = createRun();
     run.bossArmor = 4;
-    expect(applyBossHit(run, 12, 3)).toBe(11);
+    expect(applyBossHit(run, { cleared: 12, activates: 3 })).toBe(11);
     expect(run.bossArmor).toBe(1);
     expect(run.bossHp).toBe(STAGE1_BOSS_HP - 11);
   });
@@ -71,7 +71,7 @@ describe("run boss", () => {
   it("blocks a hit that does not beat armor", () => {
     const run = createRun();
     run.bossArmor = 8;
-    expect(applyBossHit(run, 3, 0)).toBe(0);
+    expect(applyBossHit(run, { cleared: 3 })).toBe(0);
     expect(run.bossHp).toBe(STAGE1_BOSS_HP);
     expect(run.bossArmor).toBe(8);
   });
@@ -80,8 +80,8 @@ describe("run boss", () => {
     const run = createRun();
     run.bossHp = 4;
     run.bossArmor = 0;
-    expect(applyBossHit(run, 10, 0)).toBe(4);
+    expect(applyBossHit(run, { cleared: 10 })).toBe(4);
     expect(run.bossHp).toBe(0);
-    expect(applyBossHit(run, 3, 0)).toBe(0);
+    expect(applyBossHit(run, { cleared: 3 })).toBe(0);
   });
 });

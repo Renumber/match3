@@ -152,16 +152,25 @@ function jobsForTileIds(board: (Tile | null)[][], ids: Set<number>): ActivateJob
   return jobs;
 }
 
+function countBlockers(board: (Tile | null)[][], cells: Pos[]): number {
+  let n = 0;
+  for (const cell of cells) {
+    if (getTile(board, cell)?.blocker) n += 1;
+  }
+  return n;
+}
+
 function clearActivated(
   board: (Tile | null)[][],
   toClear: Pos[],
-): { events: GameEvent[]; cleared: number } {
+): { events: GameEvent[]; cleared: number; blockers: number } {
   const events: GameEvent[] = [];
   const newlyCleared = toClear.filter((cell) => getTile(board, cell));
+  const blockers = countBlockers(board, newlyCleared);
   if (newlyCleared.length) events.push({ type: "highlight", cells: newlyCleared });
   for (const cell of newlyCleared) setTile(board, cell, null);
   if (newlyCleared.length) events.push({ type: "clear", cells: newlyCleared });
-  return { events, cleared: newlyCleared.length };
+  return { events, cleared: newlyCleared.length, blockers };
 }
 
 function spawnSpecialForMatch(
@@ -316,6 +325,7 @@ export function resolveBoard(
   const events: GameEvent[] = [];
   let cleared = 0;
   let chain = 0;
+  let blockersCleared = 0;
 
   const comboJobs = comboActivateJobs(board, swap, stats);
   if (comboJobs) {
@@ -326,6 +336,7 @@ export function resolveBoard(
     const first = activateSpecials(board, rng, comboJobs, clearSet, toClear, stats);
     events.push({ type: "highlight", cells: [...toClear] });
     events.push(...first.fxEvents);
+    blockersCleared += countBlockers(board, toClear);
     for (const cell of toClear) setTile(board, cell, null);
     if (toClear.length) {
       events.push({ type: "clear", cells: [...toClear] });
@@ -349,6 +360,7 @@ export function resolveBoard(
           const extra = clearActivated(board, echoClear);
           events.push(...extra.events);
           cleared += extra.cleared;
+          blockersCleared += extra.blockers;
           events.push(...settleEvents(board, rng));
         }
       }
@@ -402,6 +414,7 @@ export function resolveBoard(
     events.push({ type: "highlight", cells: [...toClear] });
     events.push(...first.fxEvents);
 
+    blockersCleared += countBlockers(board, toClear);
     for (const cell of toClear) setTile(board, cell, null);
     if (toClear.length) {
       events.push({ type: "clear", cells: [...toClear] });
@@ -430,6 +443,7 @@ export function resolveBoard(
         events.push({ type: "highlight", cells: newlyCleared });
       }
       events.push(...second.fxEvents);
+      blockersCleared += countBlockers(board, newlyCleared);
       for (const cell of newlyCleared) setTile(board, cell, null);
       if (newlyCleared.length) {
         events.push({ type: "clear", cells: newlyCleared });
@@ -461,6 +475,7 @@ export function resolveBoard(
         const extra = clearActivated(board, echoClear);
         events.push(...extra.events);
         cleared += extra.cleared;
+        blockersCleared += extra.blockers;
         const refill = settleBoard(board, rng);
         if (refill.falls.length) events.push({ type: "fall", moves: refill.falls });
         if (refill.drops.length) events.push({ type: "dropIn", drops: refill.drops });
@@ -473,5 +488,5 @@ export function resolveBoard(
     }
   }
 
-  return { events, cleared, chain };
+  return { events, cleared, chain, blockersCleared };
 }

@@ -4,7 +4,13 @@ export type Hud = {
   setMoves: (value: number) => void;
   setLevel: (value: number) => void;
   setXp: (current: number, next: number) => void;
-  setBoss: (name: string, current: number, max: number, armor: number) => void;
+  setBoss: (
+    name: string,
+    current: number,
+    max: number,
+    armor: number,
+    armorMax: number,
+  ) => void;
   setUpgrades: (items: { title: string; count: number }[]) => void;
 };
 
@@ -45,8 +51,9 @@ export function mountHud(): Hud {
       const pct = next <= 0 ? 0 : Math.min(100, Math.round((current / next) * 100));
       xpFill.style.width = `${pct}%`;
     },
-    setBoss: (name, current, max, armor) => {
+    setBoss: (name, current, max, armor, armorMax) => {
       bossNameEl.textContent = name;
+      bossArmorEl.hidden = armorMax <= 0;
       bossArmorEl.textContent = armor > 0 ? `갑옷 ${armor}` : "깨짐";
       bossArmorEl.dataset.broken = armor > 0 ? "false" : "true";
       bossHpEl.textContent = `${current}/${max}`;

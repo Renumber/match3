@@ -29,6 +29,12 @@ export function makeTile(
   return tile;
 }
 
+export function makeBlocker(): Tile {
+  const id = nextId;
+  nextId += 1;
+  return { id, color: 0, special: "none", blocker: true };
+}
+
 export function emptyBoard(): (Tile | null)[][] {
   return Array.from({ length: ROWS }, () => Array.from({ length: COLS }, () => null));
 }
@@ -75,12 +81,12 @@ function colorWouldMatch(board: (Tile | null)[][], p: Pos, color: ColorId): bool
   if (p.c >= 2) {
     const a = getTile(board, { r: p.r, c: p.c - 1 });
     const b = getTile(board, { r: p.r, c: p.c - 2 });
-    if (a && b && a.color === color && b.color === color) return true;
+    if (a && b && !a.blocker && !b.blocker && a.color === color && b.color === color) return true;
   }
   if (p.r >= 2) {
     const a = getTile(board, { r: p.r - 1, c: p.c });
     const b = getTile(board, { r: p.r - 2, c: p.c });
-    if (a && b && a.color === color && b.color === color) return true;
+    if (a && b && !a.blocker && !b.blocker && a.color === color && b.color === color) return true;
   }
   return false;
 }

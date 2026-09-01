@@ -90,6 +90,7 @@ export function lightningTargets(
   count: number,
   rng: Rng,
 ): Pos[] {
+  const cores: Pos[] = [];
   const specials: Pos[] = [];
   const normals: Pos[] = [];
   for (let r = 0; r < ROWS; r++) {
@@ -97,13 +98,15 @@ export function lightningTargets(
       if (r === origin.r && c === origin.c) continue;
       const tile = getTile(board, { r, c });
       if (!tile) continue;
-      if (tile.special !== "none") specials.push({ r, c });
+      if (tile.blocker) cores.push({ r, c });
+      else if (tile.special !== "none") specials.push({ r, c });
       else normals.push({ r, c });
     }
   }
+  shuffleInPlace(cores, rng);
   shuffleInPlace(specials, rng);
   shuffleInPlace(normals, rng);
-  return [...specials, ...normals].slice(0, count);
+  return [...cores, ...specials, ...normals].slice(0, count);
 }
 
 export function specialFromThreeMatch(cells: Pos[], origin: Pos, rng: Rng): Special {

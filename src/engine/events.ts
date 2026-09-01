@@ -30,4 +30,5 @@ export type ResolveResult = {
   events: GameEvent[];
   cleared: number;
   chain: number;
+  blockersCleared: number;
 };
