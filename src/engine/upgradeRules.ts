@@ -314,10 +314,13 @@ export function extraMovesOnLevel(gained: number, stats: UpgradeStats): number {
   return moves;
 }
 
-export function xpFromClears(cleared: number, stats: UpgradeStats): number {
+/** Extra XP on top of the cleared-tile count when an armor plate is destroyed. */
+export const PLATE_BREAK_XP = 5;
+
+export function xpFromClears(cleared: number, stats: UpgradeStats, blockersCleared = 0): number {
   let bonus = 0;
   for (const rule of UPGRADE_RULES) {
     bonus += rule.bonusXp?.(cleared, stats) ?? 0;
   }
-  return cleared + bonus;
+  return cleared + blockersCleared * PLATE_BREAK_XP + bonus;
 }

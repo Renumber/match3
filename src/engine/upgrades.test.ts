@@ -3,6 +3,7 @@ import {
   applyUpgradeEffect,
   defaultUpgradeStats,
   echoChance,
+  PLATE_BREAK_XP,
   UPGRADE_STAT_DEFS,
   xpFromClears,
 } from "./upgrades.ts";
@@ -78,5 +79,14 @@ describe("applyUpgradeEffect", () => {
     expect(xpFromClears(3, stats)).toBe(4);
     stats.xpBonus = 1;
     expect(xpFromClears(3, stats)).toBe(6);
+  });
+
+  it("adds extra xp when plates break", () => {
+    const stats = defaultUpgradeStats();
+    expect(xpFromClears(4, stats, 0)).toBe(4);
+    expect(xpFromClears(4, stats, 1)).toBe(4 + PLATE_BREAK_XP);
+    expect(xpFromClears(4, stats, 2)).toBe(4 + PLATE_BREAK_XP * 2);
+    stats.xpBonus = 0.25;
+    expect(xpFromClears(4, stats, 1)).toBe(5 + PLATE_BREAK_XP);
   });
 });

@@ -181,7 +181,7 @@ export class Game {
     this.totalCleared += result.cleared;
     this.lastDamage = applyResolveToBoss(this.run, result);
     syncBossTiles(this.board, this.rng, this.run, this.boss, destroyedPlates);
-    this.grantXp(xpFromClears(result.cleared, this.upgrades));
+    this.grantXp(xpFromClears(result.cleared, this.upgrades, result.blockersCleared));
     this.run.moves += extraMovesAfterResolve(result, this.upgrades);
     this.syncPhase();
     const extra: ResolveResult["events"] = [];

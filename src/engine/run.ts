@@ -1,6 +1,6 @@
 import { STAGE1_BOSS, armorStart, type BossDef, type BossGimmick } from "../data/bosses.ts";
 
-export const STARTING_MOVES = 30;
+export const STARTING_MOVES = 40;
 export { STAGE1_BOSS_HP, STAGE1_BOSS_NAME, STAGE1_BOSS_ARMOR } from "../data/bosses.ts";
 
 export type RunProgress = {

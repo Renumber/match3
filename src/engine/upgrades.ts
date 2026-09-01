@@ -11,6 +11,7 @@ export {
 export {
   extraMovesAfterResolve,
   extraMovesOnLevel,
+  PLATE_BREAK_XP,
   xpFromClears,
   type UpgradeRule,
   UPGRADE_RULES,
