@@ -1,6 +1,8 @@
 export {
   applyUpgradeEffect,
   defaultUpgradeStats,
+  echoChance,
+  ECHO_DECAY,
   UPGRADE_STAT_DEFS,
   type UpgradeEffect,
   type UpgradeStatKey,

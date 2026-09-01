@@ -285,26 +285,6 @@ body {
   color: #fde047;
 }
 
-.levelup-tag[data-rarity="common"] {
-  background: #27272a;
-  color: #d4d4d8;
-}
-
-.levelup-tag[data-rarity="uncommon"] {
-  background: #064e3b;
-  color: #6ee7b7;
-}
-
-.levelup-tag[data-rarity="rare"] {
-  background: #3b0764;
-  color: #d8b4fe;
-}
-
-.levelup-tag[data-rarity="core"] {
-  background: #164e63;
-  color: #67e8f9;
-}
-
 #codex {
   position: fixed;
   inset: 0;

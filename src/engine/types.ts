@@ -18,6 +18,7 @@ export type Tile = {
   color: ColorId;
   special: Special;
   plain?: boolean;
+  echoDepth?: number;
 };
 
 export type MatchKind = "three" | "lineH" | "lineV" | "bomb" | "lightning";

@@ -1,5 +1,11 @@
 import { describe, expect, it } from "vitest";
-import { applyUpgradeEffect, defaultUpgradeStats, UPGRADE_STAT_DEFS, xpFromClears } from "./upgrades.ts";
+import {
+  applyUpgradeEffect,
+  defaultUpgradeStats,
+  echoChance,
+  UPGRADE_STAT_DEFS,
+  xpFromClears,
+} from "./upgrades.ts";
 
 describe("applyUpgradeEffect", () => {
   it("builds defaults from the stat schema", () => {
@@ -45,13 +51,23 @@ describe("applyUpgradeEffect", () => {
     expect(stats.bombCross).toBe(true);
   });
 
+  it("scales leftover chance with stacks and fades on later waves", () => {
+    expect(echoChance(0, 4)).toBe(0);
+    expect(echoChance(1, 4)).toBeCloseTo(0.25);
+    expect(echoChance(4, 4)).toBe(1);
+    expect(echoChance(4, 4, 1)).toBeCloseTo(0.5);
+    expect(echoChance(4, 4, 2)).toBeCloseTo(0.25);
+    expect(echoChance(1, 2)).toBeCloseTo(0.5);
+  });
+
   it("caps leftover special counts", () => {
     const stats = defaultUpgradeStats();
-    applyUpgradeEffect(stats, { bombEcho: 1, lightningEcho: 1 });
-    applyUpgradeEffect(stats, { bombEcho: 1, lightningEcho: 1 });
-    applyUpgradeEffect(stats, { bombEcho: 4, lightningSeedBomb: true });
+    applyUpgradeEffect(stats, { bombEcho: 1, lightningEcho: 1, lineEcho: 1 });
+    applyUpgradeEffect(stats, { bombEcho: 1, lightningEcho: 1, lineEcho: 1 });
+    applyUpgradeEffect(stats, { bombEcho: 4, lightningSeedBomb: true, lineEcho: 2 });
     expect(stats.bombEcho).toBe(4);
     expect(stats.lightningEcho).toBe(2);
+    expect(stats.lineEcho).toBe(2);
     expect(stats.lightningSeedBomb).toBe(true);
   });
 

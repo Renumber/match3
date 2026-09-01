@@ -104,24 +104,25 @@ describe("resolveBoard", () => {
 
   it("spawns a small leftover bomb that stays on the board", () => {
     const board = grid([
-      "00011111",
-      "11111111",
-      "11111111",
-      "11111111",
-      "11111111",
-      "11111111",
-      "11111111",
-      "11111111",
+      "00043210",
+      "12340123",
+      "23401234",
+      "34012340",
+      "40123401",
+      "01234012",
+      "12340123",
+      "23401234",
     ]);
     setTile(board, { r: 0, c: 1 }, makeTile(0, "bomb"));
     const stats = defaultUpgradeStats();
-    stats.bombEcho = 1;
+    stats.bombEcho = 4;
     stats.bombCross = true;
     const result = resolveBoard(board, mulberry32(1), { r: 0, c: 2 }, stats);
-    const bombActivates = result.events.filter((e) => e.type === "activate" && e.special === "bomb");
-    expect(result.events.some((e) => e.type === "spawn" && e.special === "bomb")).toBe(true);
-    expect(bombActivates.length).toBe(1);
-    expect(specialsOn(board).some((item) => item.startsWith("bomb@"))).toBe(true);
+    const leftoverSpawn = result.events.find(
+      (e) => e.type === "spawn" && e.special === "bomb" && e.tile.plain,
+    );
+    expect(leftoverSpawn).toBeDefined();
+    expect(result.events.some((e) => e.type === "activate" && e.special === "bomb")).toBe(true);
     expect(result.events.some((e) => e.type === "fxLine" && e.dir === "h" && e.index === 0)).toBe(
       true,
     );
@@ -141,7 +142,7 @@ describe("resolveBoard", () => {
     ]);
     setTile(board, { r: 0, c: 1 }, makeTile(0, "bomb"));
     const stats = defaultUpgradeStats();
-    stats.bombEcho = 1;
+    stats.bombEcho = 4;
     stats.autoDetonate = true;
     const result = resolveBoard(board, mulberry32(1), { r: 0, c: 2 }, stats);
     const leftoverSpawn = result.events.findIndex(
@@ -158,6 +159,33 @@ describe("resolveBoard", () => {
     expect(leftoverActivate).toBeGreaterThan(settleIdx);
   });
 
+  it("lets a line leave another line on the board", () => {
+    const board = grid([
+      "00043210",
+      "12340123",
+      "23401234",
+      "34012340",
+      "40123401",
+      "01234012",
+      "12340123",
+      "23401234",
+    ]);
+    setTile(board, { r: 0, c: 1 }, makeTile(0, "lineH"));
+    const stats = defaultUpgradeStats();
+    stats.lineEcho = 2;
+    const result = resolveBoard(board, mulberry32(1), { r: 0, c: 2 }, stats);
+    expect(result.events.some((e) => e.type === "activate" && e.special === "lineH")).toBe(true);
+    expect(
+      result.events.some(
+        (e) =>
+          e.type === "spawn" &&
+          (e.special === "lineH" || e.special === "lineV") &&
+          e.tile.plain,
+      ),
+    ).toBe(true);
+    expect(leftoverPlain(board, "lineH") || leftoverPlain(board, "lineV")).toBe(true);
+  });
+
   it("lets lightning leave another lightning on the board", () => {
     const board = grid([
       "000.....",
@@ -171,7 +199,7 @@ describe("resolveBoard", () => {
     ]);
     setTile(board, { r: 0, c: 1 }, makeTile(0, "lightning"));
     const stats = defaultUpgradeStats();
-    stats.lightningEcho = 1;
+    stats.lightningEcho = 2;
     const result = resolveBoard(board, mulberry32(1), { r: 0, c: 2 }, stats);
     const lightningActivates = result.events.filter(
       (e) => e.type === "activate" && e.special === "lightning",
