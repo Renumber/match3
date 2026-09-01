@@ -233,9 +233,7 @@ describe("resolveBoard", () => {
       a: { r: 2, c: 1 },
       b: { r: 2, c: 2 },
     });
-    const rows = result.events
-      .filter((e) => e.type === "fxLine" && e.dir === "h")
-      .map((e) => e.index);
+    const rows = lineIndexes(result.events, "h");
     expect(rows).toContain(2);
     expect(rows.some((index) => index !== 2)).toBe(true);
   });
@@ -249,9 +247,7 @@ describe("resolveBoard", () => {
       a: { r: 4, c: 4 },
       b: { r: 4, c: 5 },
     });
-    const vLines = result.events
-      .filter((e) => e.type === "fxLine" && e.dir === "v")
-      .map((e) => e.index);
+    const vLines = lineIndexes(result.events, "v");
     expect(vLines).toEqual([4]);
   });
 
@@ -277,9 +273,7 @@ describe("resolveBoard", () => {
     });
     const strikes = result.events.filter((e) => e.type === "strike");
     expect(strikes.length).toBeGreaterThanOrEqual(1);
-    const bombAt = result.events
-      .filter((e) => e.type === "activate" && e.special === "bomb")
-      .map((e) => `${e.at.r},${e.at.c}`);
+    const bombAt = activateCells(result.events, "bomb");
     for (const strike of strikes) {
       expect(bombAt).toContain(`${strike.to.r},${strike.to.c}`);
     }
@@ -295,9 +289,7 @@ describe("resolveBoard", () => {
     });
     const strikes = result.events.filter((e) => e.type === "strike");
     expect(strikes.length).toBeGreaterThanOrEqual(1);
-    const rows = result.events
-      .filter((e) => e.type === "fxLine" && e.dir === "h")
-      .map((e) => e.index);
+    const rows = lineIndexes(result.events, "h");
     for (const strike of strikes) {
       expect(rows).toContain(strike.to.r);
     }
@@ -313,9 +305,7 @@ describe("resolveBoard", () => {
     const spawnIdx = result.events.findIndex((e) => e.type === "spawn" && e.special === "lineH");
     expect(spawnIdx).toBeGreaterThan(-1);
     const untilSettle = eventsUntilSettle(result, spawnIdx);
-    const rows = untilSettle
-      .filter((e) => e.type === "fxLine" && e.dir === "h")
-      .map((e) => e.index);
+    const rows = lineIndexes(untilSettle, "h");
     expect(rows).toContain(0);
     expect(rows.some((index) => index !== 0)).toBe(true);
     expect(untilSettle.some((e) => e.type === "activate" && e.special === "bomb")).toBe(true);
@@ -331,9 +321,7 @@ describe("resolveBoard", () => {
     const result = resolveBoard(board, mulberry32(1), { r: 0, c: 3 }, stats);
     const spawnIdx = result.events.findIndex((e) => e.type === "spawn" && e.special === "lineH");
     const untilSettle = eventsUntilSettle(result, spawnIdx);
-    const rows = untilSettle
-      .filter((e) => e.type === "fxLine" && e.dir === "h")
-      .map((e) => e.index);
+    const rows = lineIndexes(untilSettle, "h");
     expect(rows).toEqual([0]);
     expect(untilSettle.some((e) => e.type === "activate" && e.special === "bomb")).toBe(false);
   });
@@ -372,9 +360,7 @@ describe("resolveBoard", () => {
     const untilSettle = eventsUntilSettle(result, spawnIdx);
     const strikes = untilSettle.filter((e) => e.type === "strike");
     expect(strikes.length).toBeGreaterThanOrEqual(1);
-    const bombAt = untilSettle
-      .filter((e) => e.type === "activate" && e.special === "bomb")
-      .map((e) => `${e.at.r},${e.at.c}`);
+    const bombAt = activateCells(untilSettle, "bomb");
     for (const strike of strikes) {
       expect(bombAt).toContain(`${strike.to.r},${strike.to.c}`);
     }
@@ -389,9 +375,7 @@ describe("resolveBoard", () => {
     const result = resolveBoard(board, mulberry32(1), { r: 0, c: 3 }, stats);
     const firstSpawn = result.events.findIndex((e) => e.type === "spawn");
     const untilSettle = eventsUntilSettle(result, firstSpawn);
-    const rows = untilSettle
-      .filter((e) => e.type === "fxLine" && e.dir === "h")
-      .map((e) => e.index);
+    const rows = lineIndexes(untilSettle, "h");
     expect(rows).toContain(0);
     expect(rows).toContain(1);
     expect(rows.some((index) => index !== 0 && index !== 1)).toBe(true);
@@ -435,6 +419,16 @@ function noMatchGrid() {
     }
   }
   return board;
+}
+
+function lineIndexes(events: ResolveResult["events"], dir: "h" | "v"): number[] {
+  return events.flatMap((e) => (e.type === "fxLine" && e.dir === dir ? [e.index] : []));
+}
+
+function activateCells(events: ResolveResult["events"], special: Tile["special"]): string[] {
+  return events.flatMap((e) =>
+    e.type === "activate" && e.special === special ? [`${e.at.r},${e.at.c}`] : [],
+  );
 }
 
 function clearedCells(result: ResolveResult) {
