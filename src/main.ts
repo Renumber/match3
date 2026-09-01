@@ -29,13 +29,25 @@ async function boot(): Promise<void> {
     stats: () => game.upgrades,
   });
 
+  const paintBoss = (current: number, late: boolean) => {
+    hud.setBoss({
+      name: game.bossName,
+      current,
+      max: game.bossMaxHp,
+      lateAt: game.bossLateAt,
+      late,
+      earlyColor: game.bossBar.early,
+      lateColor: game.bossBar.late,
+    });
+  };
+
   const refreshHud = () => {
     hud.setChain(game.lastChain);
     hud.setCleared(game.totalCleared);
     hud.setMoves(game.moves);
     hud.setLevel(game.level);
     hud.setXp(game.xp, game.xpToNext);
-    hud.setBoss(game.bossName, game.bossHp, game.bossMaxHp, game.bossLateAt, game.bossLate);
+    paintBoss(game.bossHp, game.bossLate);
   };
 
   const levelUp = mountLevelUp((cardId) => {
@@ -77,8 +89,8 @@ async function boot(): Promise<void> {
   board = mountBoard(app, game, {
     setChain: hud.setChain,
     setCleared: hud.setCleared,
-    setBossHp: (current, max) =>
-      hud.setBoss(game.bossName, current, max, game.bossLateAt, current <= game.bossLateAt || game.bossLate),
+    setBossHp: (current) =>
+      paintBoss(current, current <= game.bossLateAt || game.bossLate),
     onResolved: () => {
       refreshHud();
       syncOverlays();

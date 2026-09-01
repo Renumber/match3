@@ -1,10 +1,20 @@
+export type BossHud = {
+  name: string;
+  current: number;
+  max: number;
+  lateAt: number;
+  late: boolean;
+  earlyColor?: string;
+  lateColor?: string;
+};
+
 export type Hud = {
   setChain: (value: number) => void;
   setCleared: (value: number) => void;
   setMoves: (value: number) => void;
   setLevel: (value: number) => void;
   setXp: (current: number, next: number) => void;
-  setBoss: (name: string, current: number, max: number, lateAt: number, late: boolean) => void;
+  setBoss: (info: BossHud) => void;
 };
 
 function mustEl<T extends Element>(selector: string): T {
@@ -13,45 +23,18 @@ function mustEl<T extends Element>(selector: string): T {
   return el as T;
 }
 
-function ensurePips(root: HTMLElement, max: number, lateAt: number): void {
+function ensureTicks(root: HTMLElement, max: number, lateAt: number): void {
   if (root.dataset.max === String(max) && root.dataset.lateAt === String(lateAt)) return;
   root.dataset.max = String(max);
   root.dataset.lateAt = String(lateAt);
   root.replaceChildren();
-  const earlyMax = Math.max(0, max - Math.min(lateAt, max));
-  const lateMax = Math.min(lateAt, max);
-  const early = document.createElement("span");
-  early.className = "boss-pips-early";
-  for (let i = 0; i < earlyMax; i++) {
-    const pip = document.createElement("i");
-    pip.className = "boss-pip";
-    pip.dataset.zone = "early";
-    early.append(pip);
+  for (let i = 1; i < max; i++) {
+    const tick = document.createElement("i");
+    tick.className = "boss-tick";
+    if (lateAt > 0 && i === lateAt) tick.dataset.boundary = "true";
+    tick.style.left = `${(i / max) * 100}%`;
+    root.append(tick);
   }
-  const late = document.createElement("span");
-  late.className = "boss-pips-late";
-  for (let i = 0; i < lateMax; i++) {
-    const pip = document.createElement("i");
-    pip.className = "boss-pip";
-    pip.dataset.zone = "late";
-    late.append(pip);
-  }
-  if (earlyMax) root.append(early);
-  if (lateMax) root.append(late);
-}
-
-function paintPips(root: HTMLElement, current: number, max: number, lateAt: number): void {
-  const cap = Math.min(lateAt, max);
-  const earlyOn = Math.max(0, Math.min(max - cap, current - cap));
-  const lateOn = Math.max(0, Math.min(cap, current));
-  const earlyPips = root.querySelectorAll<HTMLElement>('.boss-pip[data-zone="early"]');
-  const latePips = root.querySelectorAll<HTMLElement>('.boss-pip[data-zone="late"]');
-  earlyPips.forEach((pip, i) => {
-    pip.dataset.on = i < earlyOn ? "true" : "false";
-  });
-  latePips.forEach((pip, i) => {
-    pip.dataset.on = i < lateOn ? "true" : "false";
-  });
 }
 
 export function mountHud(): Hud {
@@ -63,7 +46,9 @@ export function mountHud(): Hud {
   const xpFill = mustEl<HTMLElement>("#xp-fill");
   const bossNameEl = mustEl("#boss-name");
   const bossPhaseEl = mustEl<HTMLElement>("#boss-phase");
-  const bossPipsEl = mustEl<HTMLElement>("#boss-pips");
+  const bossBarEl = mustEl<HTMLElement>("#boss-bar");
+  const bossFillEl = mustEl<HTMLElement>("#boss-fill");
+  const bossTicksEl = mustEl<HTMLElement>("#boss-ticks");
 
   return {
     setChain: (value) => {
@@ -83,11 +68,20 @@ export function mountHud(): Hud {
       const pct = next <= 0 ? 0 : Math.min(100, Math.round((current / next) * 100));
       xpFill.style.width = `${pct}%`;
     },
-    setBoss: (name, current, max, lateAt, late) => {
-      bossNameEl.textContent = name;
-      bossPhaseEl.hidden = !late;
-      ensurePips(bossPipsEl, max, lateAt);
-      paintPips(bossPipsEl, current, max, lateAt);
+    setBoss: (info) => {
+      bossNameEl.textContent = info.name;
+      bossPhaseEl.hidden = !info.late;
+      const max = Math.max(0, info.max);
+      const hp = Math.max(0, Math.min(info.current, max));
+      const lateAt = Math.max(0, Math.min(info.lateAt, max));
+      const hpFrac = max <= 0 ? 0 : hp / max;
+      const lateStop = max <= 0 || lateAt <= 0 ? "0%" : `${(lateAt / max) * 100}%`;
+      bossBarEl.style.setProperty("--boss-early", info.earlyColor ?? "#a8a29e");
+      bossBarEl.style.setProperty("--boss-late", info.lateColor ?? "#e11d48");
+      bossFillEl.style.width = `${hpFrac * 100}%`;
+      bossFillEl.style.setProperty("--hp-frac", String(hpFrac || 1));
+      bossFillEl.style.setProperty("--late-stop", lateStop);
+      ensureTicks(bossTicksEl, max, lateAt);
     },
   };
 }

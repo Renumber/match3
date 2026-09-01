@@ -17,8 +17,11 @@ export type PlatesGimmick = {
   cells: Pos[];
   hits: number;
   damage: number;
-  /** Remaining HP that opens late phase. 0 = no late phase. */
-  lateAt?: number;
+};
+
+export type BossBar = {
+  early?: string;
+  late?: string;
 };
 
 export type BossGimmick = ArmorGimmick | CoresGimmick | PlatesGimmick;
@@ -27,6 +30,9 @@ export type BossDef = {
   id: string;
   name: string;
   hp: number;
+  /** Remaining HP that starts late phase. Bar left zone. 0/omit = none. */
+  lateAt?: number;
+  bar?: BossBar;
   gimmicks: BossGimmick[];
 };
 
@@ -41,8 +47,10 @@ export const GOLEM: BossDef = {
   id: "golem",
   name: "골렘",
   hp: 30,
+  lateAt: 10,
+  bar: { early: "#a8a29e", late: "#e11d48" },
   gimmicks: [
-    { type: "plates", cells: GOLEM_PLATES, hits: 1, damage: 1, lateAt: 10 },
+    { type: "plates", cells: GOLEM_PLATES, hits: 3, damage: 1 },
   ],
 };
 
@@ -57,7 +65,7 @@ export function platesGimmick(def: BossDef): PlatesGimmick | undefined {
 }
 
 export function plateLateAt(def: BossDef): number {
-  return platesGimmick(def)?.lateAt ?? 0;
+  return def.lateAt ?? 0;
 }
 
 export function armorStart(def: BossDef): number {

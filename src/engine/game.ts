@@ -106,6 +106,10 @@ export class Game {
     return this.run.bossLate;
   }
 
+  get bossBar(): { early?: string; late?: string } {
+    return this.boss.bar ?? {};
+  }
+
   grantXp(amount: number): void {
     const before = this.run.level;
     addXp(this.run, amount);

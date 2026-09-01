@@ -62,7 +62,7 @@ describe("Game.trySwap special combo", () => {
     expect(getTile(game.board, plate)?.blocker).toBe(true);
   });
 
-  it("breaks a golem plate in one special hit, deals 1, and respawns elsewhere", () => {
+  it("chips golem plates without destroying them on one hit", () => {
     const game = new Game(1);
     game.board = noMatchGrid();
     placeBossTiles(game.board, STAGE1_BOSS);
@@ -72,10 +72,29 @@ describe("Game.trySwap special combo", () => {
     setTile(game.board, { r: 2, c: 3 }, makeTile(0, "bomb"));
     const hp = game.bossHp;
     game.trySwap({ r: 2, c: 2 }, { r: 2, c: 3 });
+    expect(plateCells(game.board)).toHaveLength(4);
+    expect(getTile(game.board, { r: 3, c: 3 })?.hits).toBe(2);
+    expect(game.bossHp).toBe(hp);
+    expect(game.lastDamage).toBe(0);
+  });
+
+  it("breaks a last-hit plate, deals 1, and respawns elsewhere", () => {
+    const game = new Game(1);
+    game.board = noMatchGrid();
+    placeBossTiles(game.board, STAGE1_BOSS);
+    const target = { r: 3, c: 3 };
+    const tile = getTile(game.board, target);
+    if (tile) tile.hits = 1;
+    setTile(game.board, { r: 2, c: 0 }, makeTile(0));
+    setTile(game.board, { r: 2, c: 1 }, makeTile(0));
+    setTile(game.board, { r: 2, c: 2 }, makeTile(1));
+    setTile(game.board, { r: 2, c: 3 }, makeTile(0, "bomb"));
+    const hp = game.bossHp;
+    game.trySwap({ r: 2, c: 2 }, { r: 2, c: 3 });
     expect(game.bossHp).toBe(hp - 1);
     expect(game.lastDamage).toBe(1);
     expect(plateCells(game.board)).toHaveLength(4);
-    expect(getTile(game.board, { r: 3, c: 3 })?.blocker).toBeFalsy();
+    expect(getTile(game.board, target)?.blocker).toBeFalsy();
   });
 
   it("still bounces special into a normal tile with no match", () => {
@@ -125,6 +144,8 @@ describe("Game boss", () => {
     game.board = noMatchGrid();
     placeBossTiles(game.board, STAGE1_BOSS);
     game.run.bossHp = 11;
+    const plate = getTile(game.board, { r: 3, c: 3 });
+    if (plate) plate.hits = 1;
     setTile(game.board, { r: 2, c: 0 }, makeTile(0));
     setTile(game.board, { r: 2, c: 1 }, makeTile(0));
     setTile(game.board, { r: 2, c: 2 }, makeTile(1));

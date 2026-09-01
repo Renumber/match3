@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { STAGE1_BOSS, type BossDef } from "../data/bosses.ts";
+import { plateLateAt, STAGE1_BOSS, type BossDef } from "../data/bosses.ts";
 import { createFilledBoard, getTile, makeTile, setTile } from "./board.ts";
 import { applyBossHit, placeBossTiles, refillBossTiles, syncBossTiles } from "./boss.ts";
 import { mulberry32 } from "./rng.ts";
@@ -25,8 +25,13 @@ describe("boss catalog", () => {
     const board = createFilledBoard(mulberry32(1));
     placeBossTiles(board, STAGE1_BOSS);
     expect(getTile(board, { r: 3, c: 3 })?.blocker).toBe(true);
-    expect(getTile(board, { r: 3, c: 3 })?.hits).toBe(1);
+    expect(getTile(board, { r: 3, c: 3 })?.hits).toBe(3);
     expect(getTile(board, { r: 4, c: 4 })?.blocker).toBe(true);
+  });
+
+  it("reads lateAt from the boss def, not the plate gimmick", () => {
+    expect(plateLateAt(STAGE1_BOSS)).toBe(10);
+    expect(plateLateAt(BARE)).toBe(0);
   });
 
   it("skips plates when the boss has none", () => {

@@ -1,4 +1,4 @@
-import { platesGimmick, type BossDef, type BossGimmick, type PlatesGimmick } from "../data/bosses.ts";
+import { plateLateAt, platesGimmick, type BossDef, type BossGimmick, type PlatesGimmick } from "../data/bosses.ts";
 import { getTile, makeBlocker, setTile } from "./board.ts";
 import type { ResolveResult } from "./events.ts";
 import { pickInt, type Rng } from "./rng.ts";
@@ -61,7 +61,7 @@ export function syncBossTiles(
   const gimmick = platesGimmick(def);
   if (!gimmick) return;
   if (run.bossHp <= 0) return;
-  const lateAt = gimmick.lateAt ?? 0;
+  const lateAt = plateLateAt(def);
   if (!run.bossLate && lateAt > 0 && run.bossHp <= lateAt) {
     run.bossLate = true;
     enterLatePlates(board, rng, gimmick, run.bossHp);

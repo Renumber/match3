@@ -147,53 +147,56 @@ body {
   white-space: nowrap;
 }
 
-.boss-pips {
+.boss-bar {
+  position: relative;
   flex: 1 1 auto;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  min-width: 0;
-}
-
-.boss-pips-early,
-.boss-pips-late {
-  display: flex;
-  align-items: center;
-}
-
-.boss-pips-early {
-  flex: 1 1 auto;
-  gap: 2px;
-  min-width: 0;
-}
-
-.boss-pips-late {
-  flex: 0 0 auto;
-  gap: 4px;
-}
-
-.boss-pip[data-zone="early"] {
-  flex: 1 1 0;
   height: 10px;
   min-width: 0;
-  border-radius: 2px;
+  border-radius: 999px;
   background: #27272a;
+  overflow: hidden;
 }
 
-.boss-pip[data-zone="early"][data-on="true"] {
-  background: #a8a29e;
+.boss-fill {
+  display: block;
+  height: 100%;
+  width: 0;
+  border-radius: inherit;
+  background-image: linear-gradient(
+    to right,
+    var(--boss-late, #e11d48) 0,
+    var(--boss-late, #e11d48) var(--late-stop, 0%),
+    var(--boss-early, #a8a29e) var(--late-stop, 0%),
+    var(--boss-early, #a8a29e) 100%
+  );
+  background-size: calc(100% / var(--hp-frac, 1)) 100%;
+  background-repeat: no-repeat;
+  background-position: left center;
 }
 
-.boss-pip[data-zone="late"] {
-  width: 8px;
-  height: 8px;
-  flex: 0 0 8px;
-  transform: rotate(45deg);
-  background: #3f1d24;
+.boss-ticks {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
 }
 
-.boss-pip[data-zone="late"][data-on="true"] {
-  background: #e11d48;
+.boss-tick {
+  position: absolute;
+  top: 2px;
+  bottom: 2px;
+  width: 1px;
+  margin-left: -0.5px;
+  background: #141414;
+  opacity: 0.4;
+}
+
+.boss-tick[data-boundary="true"] {
+  top: 0;
+  bottom: 0;
+  width: 2px;
+  margin-left: -1px;
+  opacity: 0.95;
+  background: #f4f4f5;
 }
 
 .xp-bar {
