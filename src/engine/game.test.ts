@@ -5,6 +5,7 @@ import { placeBossTiles } from "./boss.ts";
 import { Game } from "./game.ts";
 import { hasMatch, hasPossibleSwap } from "./match.ts";
 import { STARTING_MOVES, STAGE1_BOSS_ARMOR } from "./run.ts";
+import { PLATE_BREAK_XP, xpFromClears } from "./upgradeRules.ts";
 import { COLS, ROWS, type Pos, type Tile } from "./types.ts";
 
 const BARE: BossDef = { id: "bare", name: "맨몸", hp: 80, gimmicks: [] };
@@ -95,6 +96,29 @@ describe("Game.trySwap special combo", () => {
     expect(game.lastDamage).toBe(1);
     expect(plateCells(game.board)).toHaveLength(4);
     expect(getTile(game.board, target)?.blocker).toBeFalsy();
+  });
+
+  it("grants extra xp when a plate is destroyed", () => {
+    const game = new Game(1);
+    game.board = noMatchGrid();
+    placeBossTiles(game.board, STAGE1_BOSS);
+    const target = { r: 3, c: 3 };
+    const tile = getTile(game.board, target);
+    if (tile) tile.hits = 1;
+    setTile(game.board, { r: 2, c: 0 }, makeTile(0));
+    setTile(game.board, { r: 2, c: 1 }, makeTile(0));
+    setTile(game.board, { r: 2, c: 2 }, makeTile(1));
+    setTile(game.board, { r: 2, c: 3 }, makeTile(0, "bomb"));
+    const before = { xp: game.xp, level: game.level, pending: game.pendingLevelUps };
+    const out = game.trySwap({ r: 2, c: 2 }, { r: 2, c: 3 });
+    expect(out.result?.blockersCleared).toBe(1);
+    const awarded = xpFromClears(out.result?.cleared ?? 0, game.upgrades, 1);
+    expect(awarded).toBe((out.result?.cleared ?? 0) + PLATE_BREAK_XP);
+    if (game.level === before.level) {
+      expect(game.xp).toBe(before.xp + awarded);
+    } else {
+      expect(game.pendingLevelUps).toBeGreaterThan(before.pending);
+    }
   });
 
   it("still bounces special into a normal tile with no match", () => {
