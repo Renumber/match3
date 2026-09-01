@@ -47,7 +47,8 @@ export function mountHud(): Hud {
   const bossNameEl = mustEl("#boss-name");
   const bossPhaseEl = mustEl<HTMLElement>("#boss-phase");
   const bossBarEl = mustEl<HTMLElement>("#boss-bar");
-  const bossFillEl = mustEl<HTMLElement>("#boss-fill");
+  const bossFillLateEl = mustEl<HTMLElement>("#boss-fill-late");
+  const bossFillEarlyEl = mustEl<HTMLElement>("#boss-fill-early");
   const bossTicksEl = mustEl<HTMLElement>("#boss-ticks");
 
   return {
@@ -75,12 +76,14 @@ export function mountHud(): Hud {
       const hp = Math.max(0, Math.min(info.current, max));
       const lateAt = Math.max(0, Math.min(info.lateAt, max));
       const hpFrac = max <= 0 ? 0 : hp / max;
-      const lateStop = max <= 0 || lateAt <= 0 ? "0%" : `${(lateAt / max) * 100}%`;
-      bossBarEl.style.setProperty("--boss-early", info.earlyColor ?? "#a8a29e");
+      const lateFrac = max <= 0 || lateAt <= 0 ? 0 : lateAt / max;
+      const lateW = Math.min(hpFrac, lateFrac) * 100;
+      const earlyW = Math.max(0, hpFrac - lateFrac) * 100;
+      bossBarEl.style.setProperty("--boss-early", info.earlyColor ?? "#e7e5e4");
       bossBarEl.style.setProperty("--boss-late", info.lateColor ?? "#e11d48");
-      bossFillEl.style.width = `${hpFrac * 100}%`;
-      bossFillEl.style.setProperty("--hp-frac", String(hpFrac || 1));
-      bossFillEl.style.setProperty("--late-stop", lateStop);
+      bossFillLateEl.style.width = `${lateW}%`;
+      bossFillEarlyEl.style.left = `${lateFrac * 100}%`;
+      bossFillEarlyEl.style.width = `${earlyW}%`;
       ensureTicks(bossTicksEl, max, lateAt);
     },
   };
