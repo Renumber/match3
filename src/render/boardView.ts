@@ -34,8 +34,11 @@ export function mountBoard(app: Application, game: Game, hud: HudHooks): BoardVi
   const root = new Container();
   const bgLayer = new Graphics();
   const tileLayer = new Container();
+  const plateLayer = new Container();
   const fxLayer = new Container();
-  root.addChild(bgLayer, tileLayer, fxLayer);
+  plateLayer.eventMode = "none";
+  fxLayer.eventMode = "none";
+  root.addChild(bgLayer, tileLayer, plateLayer, fxLayer);
   app.stage.addChild(root);
   app.stage.eventMode = "static";
   app.stage.hitArea = app.screen;
@@ -96,6 +99,7 @@ export function mountBoard(app: Application, game: Game, hud: HudHooks): BoardVi
     for (const item of occupancy.values()) item.g.destroy();
     occupancy.clear();
     tileLayer.removeChildren();
+    plateLayer.removeChildren();
     for (const child of [...fxLayer.children]) child.destroy();
     layout();
     drawBg();
@@ -105,7 +109,8 @@ export function mountBoard(app: Application, game: Game, hud: HudHooks): BoardVi
         if (!tile) continue;
         const g = makeSprite(tile, selected?.r === r && selected?.c === c);
         placeAt(g, r, c);
-        tileLayer.addChild(g);
+        if (tile.blocker) plateLayer.addChild(g);
+        else tileLayer.addChild(g);
         occupancy.set(posKey({ r, c }), { g, tile });
       }
     }
