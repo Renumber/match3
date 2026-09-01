@@ -36,8 +36,8 @@ export function effectLines(effect: UpgradeEffect): string[] {
   }
   if (effect.extraLines) lines.push(`직선 +${effect.extraLines}줄`);
   if (effect.lightningTargets) lines.push(`번개 타겟 +${effect.lightningTargets}`);
-  if (effect.specialSpawnChance) lines.push(`3매치 특수 ${percent(effect.specialSpawnChance)}`);
-  if (effect.autoDetonate) lines.push("특수 생성 시 즉시 발동");
+  if (effect.specialSpawnChance) lines.push(`3매치 특수 +${percent(effect.specialSpawnChance)}`);
+  if (effect.autoDetonate) lines.push("특수 생성 시 즉시 발동, 인접하면 합성");
   if (effect.chainMoveThreshold) {
     lines.push(`Chain ${effect.chainMoveThreshold}에 Move +${effect.chainMoveBonus ?? 1}`);
   }

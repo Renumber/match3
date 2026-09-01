@@ -303,6 +303,111 @@ describe("resolveBoard", () => {
     }
   });
 
+  it("combos a spawned line with an adjacent bomb on auto-detonate", () => {
+    const board = noMatchGrid();
+    for (let c = 0; c < 4; c++) setTile(board, { r: 0, c }, makeTile(0));
+    setTile(board, { r: 0, c: 4 }, makeTile(1, "bomb"));
+    const stats = defaultUpgradeStats();
+    stats.autoDetonate = true;
+    const result = resolveBoard(board, mulberry32(1), { r: 0, c: 3 }, stats);
+    const spawnIdx = result.events.findIndex((e) => e.type === "spawn" && e.special === "lineH");
+    expect(spawnIdx).toBeGreaterThan(-1);
+    const untilSettle = eventsUntilSettle(result, spawnIdx);
+    const rows = untilSettle
+      .filter((e) => e.type === "fxLine" && e.dir === "h")
+      .map((e) => e.index);
+    expect(rows).toContain(0);
+    expect(rows.some((index) => index !== 0)).toBe(true);
+    expect(untilSettle.some((e) => e.type === "activate" && e.special === "bomb")).toBe(true);
+    expect(untilSettle.some((e) => e.type === "activate" && e.special === "lineH")).toBe(true);
+  });
+
+  it("does not combo a spawned line with a diagonal bomb on auto-detonate", () => {
+    const board = noMatchGrid();
+    for (let c = 0; c < 4; c++) setTile(board, { r: 0, c }, makeTile(0));
+    setTile(board, { r: 1, c: 4 }, makeTile(1, "bomb"));
+    const stats = defaultUpgradeStats();
+    stats.autoDetonate = true;
+    const result = resolveBoard(board, mulberry32(1), { r: 0, c: 3 }, stats);
+    const spawnIdx = result.events.findIndex((e) => e.type === "spawn" && e.special === "lineH");
+    const untilSettle = eventsUntilSettle(result, spawnIdx);
+    const rows = untilSettle
+      .filter((e) => e.type === "fxLine" && e.dir === "h")
+      .map((e) => e.index);
+    expect(rows).toEqual([0]);
+    expect(untilSettle.some((e) => e.type === "activate" && e.special === "bomb")).toBe(false);
+  });
+
+  it("widens adjacent bombs when a bomb auto-detonates", () => {
+    const board = noMatchGrid();
+    setTile(board, { r: 0, c: 0 }, makeTile(0));
+    setTile(board, { r: 1, c: 0 }, makeTile(0));
+    setTile(board, { r: 2, c: 0 }, makeTile(0));
+    setTile(board, { r: 2, c: 1 }, makeTile(0));
+    setTile(board, { r: 2, c: 2 }, makeTile(0));
+    setTile(board, { r: 2, c: 3 }, makeTile(1, "bomb"));
+    const stats = defaultUpgradeStats();
+    stats.autoDetonate = true;
+    const result = resolveBoard(board, mulberry32(1), { r: 2, c: 2 }, stats);
+    const spawnIdx = result.events.findIndex((e) => e.type === "spawn" && e.special === "bomb");
+    expect(spawnIdx).toBeGreaterThan(-1);
+    const untilSettle = eventsUntilSettle(result, spawnIdx);
+    const highlighted = untilSettle.flatMap((e) => (e.type === "highlight" ? e.cells : []));
+    expect(highlighted.some((p) => p.r === 0 && p.c === 4)).toBe(true);
+    const bombs = untilSettle.filter((e) => e.type === "activate" && e.special === "bomb");
+    expect(bombs.length).toBeGreaterThanOrEqual(2);
+  });
+
+  it("fires sub-bombs when lightning auto-detonates next to a bomb", () => {
+    const board = noMatchGrid();
+    setTile(board, { r: 0, c: 0 }, makeTile(0));
+    setTile(board, { r: 0, c: 1 }, makeTile(0));
+    setTile(board, { r: 1, c: 0 }, makeTile(0));
+    setTile(board, { r: 1, c: 1 }, makeTile(0));
+    setTile(board, { r: 0, c: 2 }, makeTile(1, "bomb"));
+    const stats = defaultUpgradeStats();
+    stats.autoDetonate = true;
+    const result = resolveBoard(board, mulberry32(1), { r: 0, c: 1 }, stats);
+    const spawnIdx = result.events.findIndex((e) => e.type === "spawn" && e.special === "lightning");
+    const untilSettle = eventsUntilSettle(result, spawnIdx);
+    const strikes = untilSettle.filter((e) => e.type === "strike");
+    expect(strikes.length).toBeGreaterThanOrEqual(1);
+    const bombAt = untilSettle
+      .filter((e) => e.type === "activate" && e.special === "bomb")
+      .map((e) => `${e.at.r},${e.at.c}`);
+    for (const strike of strikes) {
+      expect(bombAt).toContain(`${strike.to.r},${strike.to.c}`);
+    }
+  });
+
+  it("combos two specials that spawn adjacent on the same tick", () => {
+    const board = noMatchGrid();
+    for (let c = 0; c < 4; c++) setTile(board, { r: 0, c }, makeTile(0));
+    for (let c = 1; c < 5; c++) setTile(board, { r: 1, c }, makeTile(1));
+    const stats = defaultUpgradeStats();
+    stats.autoDetonate = true;
+    const result = resolveBoard(board, mulberry32(1), { r: 0, c: 3 }, stats);
+    const firstSpawn = result.events.findIndex((e) => e.type === "spawn");
+    const untilSettle = eventsUntilSettle(result, firstSpawn);
+    const rows = untilSettle
+      .filter((e) => e.type === "fxLine" && e.dir === "h")
+      .map((e) => e.index);
+    expect(rows).toContain(0);
+    expect(rows).toContain(1);
+    expect(rows.some((index) => index !== 0 && index !== 1)).toBe(true);
+  });
+
+  it("does not combo a spawned special with an adjacent one without auto-detonate", () => {
+    const board = noMatchGrid();
+    for (let c = 0; c < 4; c++) setTile(board, { r: 0, c }, makeTile(0));
+    setTile(board, { r: 0, c: 4 }, makeTile(1, "bomb"));
+    const result = resolveBoard(board, mulberry32(1), { r: 0, c: 3 }, defaultUpgradeStats());
+    expect(result.events.some((e) => e.type === "spawn" && e.special === "lineH")).toBe(true);
+    expect(result.events.some((e) => e.type === "activate")).toBe(false);
+    expect(getTile(board, { r: 0, c: 3 })?.special).toBe("lineH");
+    expect(getTile(board, { r: 0, c: 4 })?.special).toBe("bomb");
+  });
+
   it("does not seed sub-bombs from a chained lightning", () => {
     const board = noMatchGrid();
     setTile(board, { r: 0, c: 0 }, makeTile(0, "lightning"));
@@ -345,6 +450,17 @@ function specialsOn(board: (Tile | null)[][]) {
     }
   }
   return found;
+}
+
+function eventsUntilSettle(result: ResolveResult, afterIndex = 0) {
+  const out: ResolveResult["events"] = [];
+  for (let i = afterIndex; i < result.events.length; i++) {
+    const event = result.events[i];
+    if (!event) break;
+    if (event.type === "fall" || event.type === "dropIn") break;
+    out.push(event);
+  }
+  return out;
 }
 
 function leftoverPlain(board: (Tile | null)[][], special: Tile["special"]): boolean {
