@@ -34,7 +34,7 @@
 | 8×8, 색 5, Moves 40, 인접 스왑, 매치 없으면 튕김. 특수끼리 스왑은 매치 없어도 발동 | Bonus Chain, Final Burst, Critical Mass |
 | 일반 스왑만 Move -1. 교착이면 셔플 | `fsm.ts` 파일. Bonus 단계는 없음 |
 | XP → 레벨업 3택 | |
-| 보스 골렘 HP 300. 지운 타일 = 피해. 처치 승 / Moves 0 패. 결과 화면 | |
+| 보스 골렘 HP 300, 갑옷 4. 피해 = 지운 타일 − 갑옷. 특수 발동이 갑옷 −1. 처치 승 / Moves 0 패. 결과 화면 | |
 
 ### 엔진 `src/engine/`
 
@@ -42,14 +42,14 @@
 - 특수 3종: Line(가로/세로), Bomb(기본 3×3, 반경 캡 3), Lightning(기본 타겟 2, 특수 우선).
 - resolve: 매치 → 생성 → 발동 → 중력. 범위 안 특수는 Activate. 특수끼리 스왑은 `combo.ts` 레시피. 자동 점화도 직교 인접 특수에 같은 레시피. Bomb+Lightning / Line+Lightning은 번개 타격 칸에서 서브 폭탄·라인 발동. 스텝 상한 80.
 - 업글은 `upgradeStats` 숫자/플래그 + `upgradeRules` 훅. `game` / `resolve` / `specials`에 카드별 `if` 없음.
-- 런: Moves 40, 보스 골렘 HP 300, 지운 타일 = 피해. 페이즈 `idle` / `levelUp` / `win` / `lose`. 교착 셔플.
+- 런: Moves 40, 보스 골렘 HP 300 / 갑옷 4. 특수 발동이 갑옷을 깨고, 지운 타일 − 갑옷 = 피해. 페이즈 `idle` / `levelUp` / `win` / `lose`. 교착 셔플.
 - vitest: match, gravity, resolve, specials, combo, game, run, levelUp, upgrades, upgradeRules, upgradeInfo, rng.
 
 ### 보드 / HUD
 
 - PixiJS v8. 이벤트 타임라인 재생 (스왑, 튕김, 하이라이트, 발동, 라인/폭탄/번개 FX, 낙하).
 - 입력: 탭-탭, 스와이프. resolve 중 `busy`.
-- HUD: Moves, Level, Chain, Cleared, XP 바, 보스 바(이름+HP), 보유 카드 칩.
+- HUD: Moves, Level, Chain, Cleared, XP 바, 보스 바(이름+갑옷+HP), 보유 카드 칩(한 줄 가로 스크롤).
 - 레벨업 모달, 승/패 결과, 도감(카드/이번 런 스탯).
 - Amplify: `amplify.yml` (`npm test` + `vite build`).
 
@@ -76,6 +76,15 @@
 ---
 
 ## 로그
+
+### 2026-09-01 — 골렘 갑옷
+
+- HP만 있으면 스펀지라서, 갑옷 N이 피해를 깎는다. 특수 발동 1회마다 갑옷 −1 (이번 스왑에서 먼저).
+- 보드 장애물 없음. XP는 지운 타일 그대로.
+
+### 2026-09-01 — 보유 카드 칩 한 줄
+
+- 칩이 줄바꿈되면 HUD가 보드를 밀어 잘렸다. 한 줄 가로 스크롤로 높이를 고정.
 
 ### 2026-09-01 — 보스 HP, 승패, 셔플
 

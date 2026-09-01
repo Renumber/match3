@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { getTile, makeTile, resetTileIds, setTile } from "./board.ts";
 import { Game } from "./game.ts";
 import { hasMatch, hasPossibleSwap } from "./match.ts";
-import { STARTING_MOVES } from "./run.ts";
+import { STARTING_MOVES, STAGE1_BOSS_ARMOR } from "./run.ts";
 import { COLS, ROWS, type Tile } from "./types.ts";
 
 function noMatchGrid() {
@@ -54,8 +54,9 @@ describe("Game.trySwap special combo", () => {
 });
 
 describe("Game boss", () => {
-  it("deals damage equal to tiles cleared", () => {
+  it("deals leftover damage after armor", () => {
     const game = new Game(1);
+    game.run.bossArmor = 0;
     threeMatchSwap(game);
     const hp = game.bossHp;
     const out = game.trySwap({ r: 0, c: 2 }, { r: 0, c: 3 });
@@ -65,10 +66,35 @@ describe("Game boss", () => {
     expect(game.lastDamage).toBe(out.result?.cleared);
   });
 
+  it("blocks a small match while armor holds", () => {
+    const game = new Game(1);
+    game.run.bossArmor = 40;
+    threeMatchSwap(game);
+    const hp = game.bossHp;
+    game.trySwap({ r: 0, c: 2 }, { r: 0, c: 3 });
+    expect(game.bossHp).toBe(hp);
+    expect(game.lastDamage).toBe(0);
+    expect(game.bossArmor).toBe(40);
+  });
+
+  it("cracks armor when specials activate", () => {
+    const game = new Game(1);
+    game.run.bossArmor = 2;
+    game.board = noMatchGrid();
+    setTile(game.board, { r: 3, c: 3 }, makeTile(0, "bomb"));
+    setTile(game.board, { r: 3, c: 4 }, makeTile(1, "lightning"));
+    const hp = game.bossHp;
+    const armor = game.bossArmor;
+    game.trySwap({ r: 3, c: 3 }, { r: 3, c: 4 });
+    expect(game.bossArmor).toBeLessThan(armor);
+    expect(game.bossHp).toBeLessThan(hp);
+  });
+
   it("wins when the boss dies, even on the last move", () => {
     const game = new Game(1);
     game.run.moves = 1;
     game.run.bossHp = 3;
+    game.run.bossArmor = 0;
     threeMatchSwap(game);
     game.trySwap({ r: 0, c: 2 }, { r: 0, c: 3 });
     expect(game.bossHp).toBe(0);
@@ -79,6 +105,7 @@ describe("Game boss", () => {
   it("skips leftover level-ups after a kill", () => {
     const game = new Game(1);
     game.run.bossHp = 3;
+    game.run.bossArmor = 0;
     game.run.xp = game.xpToNext - 1;
     threeMatchSwap(game);
     game.trySwap({ r: 0, c: 2 }, { r: 0, c: 3 });
@@ -131,6 +158,7 @@ describe("Game boss", () => {
     game.restart(2);
     expect(game.phase).toBe("idle");
     expect(game.bossHp).toBe(game.bossMaxHp);
+    expect(game.bossArmor).toBe(STAGE1_BOSS_ARMOR);
     expect(game.moves).toBe(STARTING_MOVES);
     expect(game.ownedCardIds).toHaveLength(0);
     expect(hasMatch(game.board)).toBe(false);

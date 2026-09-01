@@ -1,5 +1,13 @@
 import { describe, expect, it } from "vitest";
-import { addXp, applyBossDamage, createRun, STAGE1_BOSS_HP, STARTING_MOVES, xpForNextLevel } from "./run.ts";
+import {
+  addXp,
+  applyBossHit,
+  createRun,
+  STAGE1_BOSS_ARMOR,
+  STAGE1_BOSS_HP,
+  STARTING_MOVES,
+  xpForNextLevel,
+} from "./run.ts";
 
 describe("run xp", () => {
   it("starts with the raised move count", () => {
@@ -36,24 +44,44 @@ describe("run xp", () => {
 });
 
 describe("run boss", () => {
-  it("starts at stage 1 hp", () => {
+  it("starts at stage 1 hp and armor", () => {
     const run = createRun();
     expect(run.bossHp).toBe(STAGE1_BOSS_HP);
     expect(run.bossMaxHp).toBe(STAGE1_BOSS_HP);
+    expect(run.bossArmor).toBe(STAGE1_BOSS_ARMOR);
     expect(run.bossName).toBe("골렘");
   });
 
-  it("takes damage equal to tiles cleared", () => {
+  it("subtracts remaining armor from cleared tiles", () => {
     const run = createRun();
-    expect(applyBossDamage(run, 12)).toBe(12);
-    expect(run.bossHp).toBe(STAGE1_BOSS_HP - 12);
+    run.bossArmor = 4;
+    expect(applyBossHit(run, 12, 0)).toBe(8);
+    expect(run.bossHp).toBe(STAGE1_BOSS_HP - 8);
+    expect(run.bossArmor).toBe(4);
+  });
+
+  it("cracks armor from special activates before absorbing", () => {
+    const run = createRun();
+    run.bossArmor = 4;
+    expect(applyBossHit(run, 12, 3)).toBe(11);
+    expect(run.bossArmor).toBe(1);
+    expect(run.bossHp).toBe(STAGE1_BOSS_HP - 11);
+  });
+
+  it("blocks a hit that does not beat armor", () => {
+    const run = createRun();
+    run.bossArmor = 8;
+    expect(applyBossHit(run, 3, 0)).toBe(0);
+    expect(run.bossHp).toBe(STAGE1_BOSS_HP);
+    expect(run.bossArmor).toBe(8);
   });
 
   it("clamps overkill to remaining hp", () => {
     const run = createRun();
     run.bossHp = 4;
-    expect(applyBossDamage(run, 10)).toBe(4);
+    run.bossArmor = 0;
+    expect(applyBossHit(run, 10, 0)).toBe(4);
     expect(run.bossHp).toBe(0);
-    expect(applyBossDamage(run, 3)).toBe(0);
+    expect(applyBossHit(run, 3, 0)).toBe(0);
   });
 });

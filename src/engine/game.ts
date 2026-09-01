@@ -6,7 +6,7 @@ import { resolveBoard } from "./resolve.ts";
 import { isAdjacent, type Pos, type Tile } from "./types.ts";
 import type { ResolveResult } from "./events.ts";
 import type { LevelUpCard } from "../data/levelUpCards.ts";
-import { addXp, applyBossDamage, createRun, type RunProgress } from "./run.ts";
+import { addXp, activateCount, applyBossHit, createRun, type RunProgress } from "./run.ts";
 import {
   extraMovesAfterResolve,
   extraMovesOnLevel,
@@ -84,6 +84,10 @@ export class Game {
     return this.run.bossMaxHp;
   }
 
+  get bossArmor(): number {
+    return this.run.bossArmor;
+  }
+
   grantXp(amount: number): void {
     const before = this.run.level;
     addXp(this.run, amount);
@@ -148,7 +152,7 @@ export class Game {
     this.run.moves -= 1;
     this.lastChain = result.chain;
     this.totalCleared += result.cleared;
-    this.lastDamage = applyBossDamage(this.run, result.cleared);
+    this.lastDamage = applyBossHit(this.run, result.cleared, activateCount(result.events));
     this.grantXp(xpFromClears(result.cleared, this.upgrades));
     this.run.moves += extraMovesAfterResolve(result, this.upgrades);
     this.syncPhase();

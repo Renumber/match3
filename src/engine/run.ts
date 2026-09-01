@@ -1,6 +1,7 @@
 export const STARTING_MOVES = 40;
 export const STAGE1_BOSS_HP = 300;
 export const STAGE1_BOSS_NAME = "골렘";
+export const STAGE1_BOSS_ARMOR = 4;
 
 export type RunProgress = {
   level: number;
@@ -11,6 +12,7 @@ export type RunProgress = {
   bossName: string;
   bossHp: number;
   bossMaxHp: number;
+  bossArmor: number;
 };
 
 export function xpForNextLevel(level: number): number {
@@ -27,12 +29,25 @@ export function createRun(): RunProgress {
     bossName: STAGE1_BOSS_NAME,
     bossHp: STAGE1_BOSS_HP,
     bossMaxHp: STAGE1_BOSS_HP,
+    bossArmor: STAGE1_BOSS_ARMOR,
   };
 }
 
-export function applyBossDamage(run: RunProgress, cleared: number): number {
-  if (cleared <= 0 || run.bossHp <= 0) return 0;
-  const dealt = Math.min(cleared, run.bossHp);
+export function activateCount(events: { type: string }[]): number {
+  let n = 0;
+  for (const event of events) {
+    if (event.type === "activate") n += 1;
+  }
+  return n;
+}
+
+export function applyBossHit(run: RunProgress, cleared: number, activates = 0): number {
+  if (run.bossHp <= 0) return 0;
+  const cracked = Math.min(run.bossArmor, Math.max(0, activates));
+  run.bossArmor -= cracked;
+  if (cleared <= 0) return 0;
+  const raw = Math.max(0, cleared - run.bossArmor);
+  const dealt = Math.min(raw, run.bossHp);
   run.bossHp -= dealt;
   return dealt;
 }
