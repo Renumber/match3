@@ -129,11 +129,17 @@ function pickStruckEchoes(
   return cells.slice(0, count).map((at) => ({ at, special }));
 }
 
+function pickLineDir(rng: Rng): "lineH" | "lineV" {
+  return rng() < 0.5 ? "lineH" : "lineV";
+}
+
 const lineEcho: UpgradeRule = {
   id: "lineEcho",
   echoBursts: ({ special, origin, stats, struck, rng }) => {
     if ((special !== "lineH" && special !== "lineV") || stats.lineEcho <= 0) return [];
-    return pickStruckEchoes(struck, origin, stats.lineEcho, rng, special);
+    const cells = struckWithoutOrigin(struck, origin);
+    shuffleInPlace(cells, rng);
+    return cells.slice(0, stats.lineEcho).map((at) => ({ at, special: pickLineDir(rng) }));
   },
 };
 

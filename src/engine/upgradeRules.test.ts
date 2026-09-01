@@ -124,7 +124,9 @@ describe("upgrade rule registry", () => {
     });
     const struckKeys = new Set(struck.map((cell) => `${cell.r},${cell.c}`));
     expect(bursts).toHaveLength(2);
-    expect(bursts.every((burst) => burst.special === "lineH")).toBe(true);
+    expect(bursts.every((burst) => burst.special === "lineH" || burst.special === "lineV")).toBe(
+      true,
+    );
     expect(bursts.every((burst) => struckKeys.has(`${burst.at.r},${burst.at.c}`))).toBe(true);
     expect(bursts.some((burst) => burst.at.r === origin.r && burst.at.c === origin.c)).toBe(false);
   });
@@ -149,7 +151,7 @@ describe("upgrade rule registry", () => {
         struck,
       });
       expect(bursts).toHaveLength(1);
-      expect(bursts[0]?.special).toBe("lineV");
+      expect(bursts[0]?.special === "lineH" || bursts[0]?.special === "lineV").toBe(true);
       keys.add(`${bursts[0]?.at.r},${bursts[0]?.at.c}`);
     }
     expect(keys.size).toBeGreaterThan(1);
@@ -164,6 +166,21 @@ describe("upgrade rule registry", () => {
       struck,
     });
     expect(more).toHaveLength(2);
+
+    const dirs = new Set<string>();
+    for (let seed = 0; seed < 40; seed++) {
+      const bursts = collectEchoBursts({
+        special: "lineH",
+        origin: { r: 4, c: 1 },
+        board: emptyBoard(),
+        rng: mulberry32(seed),
+        stats,
+        struck,
+      });
+      for (const burst of bursts) dirs.add(burst.special);
+    }
+    expect(dirs.has("lineH")).toBe(true);
+    expect(dirs.has("lineV")).toBe(true);
   });
 
   it("plants leftover lightning on struck cells", () => {

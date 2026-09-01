@@ -112,7 +112,7 @@ export const LEVEL_UP_CARDS: LevelUpCard[] = [
   {
     id: "lineEcho",
     title: "잔류 직선",
-    description: "지운 줄의 랜덤 칸에 직선을 남긴다",
+    description: "지운 줄의 랜덤 칸에 가로 또는 세로 직선을 남긴다",
     tags: ["line"],
     rarity: "uncommon",
     stackable: true,

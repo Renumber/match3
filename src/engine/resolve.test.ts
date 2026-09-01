@@ -176,9 +176,14 @@ describe("resolveBoard", () => {
     const result = resolveBoard(board, mulberry32(1), { r: 0, c: 2 }, stats);
     expect(result.events.some((e) => e.type === "activate" && e.special === "lineH")).toBe(true);
     expect(
-      result.events.some((e) => e.type === "spawn" && e.special === "lineH" && e.tile.plain),
+      result.events.some(
+        (e) =>
+          e.type === "spawn" &&
+          (e.special === "lineH" || e.special === "lineV") &&
+          e.tile.plain,
+      ),
     ).toBe(true);
-    expect(leftoverPlain(board, "lineH")).toBe(true);
+    expect(leftoverPlain(board, "lineH") || leftoverPlain(board, "lineV")).toBe(true);
   });
 
   it("lets lightning leave another lightning on the board", () => {
