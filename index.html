@@ -14,6 +14,13 @@
   <body>
     <div id="app">
       <div id="hud">
+        <div class="boss-row">
+          <span id="boss-name">골렘</span>
+          <div class="boss-bar" aria-hidden="true">
+            <i id="boss-fill" style="width: 100%"></i>
+          </div>
+          <strong id="boss-hp">300/300</strong>
+        </div>
         <div class="hud-row">
           <div class="stat">
             <span>MOVES</span>
@@ -69,6 +76,14 @@
         </div>
         <div id="codex-cards" class="codex-cards"></div>
         <div id="codex-run" class="codex-run hidden"></div>
+      </div>
+    </div>
+    <div id="result" class="hidden" aria-hidden="true">
+      <div class="result-panel">
+        <p id="result-kicker"></p>
+        <h2 id="result-title"></h2>
+        <p id="result-detail"></p>
+        <button type="button" id="result-retry">다시</button>
       </div>
     </div>
     <script type="module" src="/src/main.ts"></script>

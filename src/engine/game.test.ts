@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
 import { getTile, makeTile, resetTileIds, setTile } from "./board.ts";
 import { Game } from "./game.ts";
+import { hasMatch, hasPossibleSwap } from "./match.ts";
+import { STARTING_MOVES } from "./run.ts";
 import { COLS, ROWS, type Tile } from "./types.ts";
 
 function noMatchGrid() {
@@ -14,6 +16,14 @@ function noMatchGrid() {
     }
   }
   return board;
+}
+
+function threeMatchSwap(game: Game): void {
+  game.board = noMatchGrid();
+  setTile(game.board, { r: 0, c: 0 }, makeTile(0));
+  setTile(game.board, { r: 0, c: 1 }, makeTile(0));
+  setTile(game.board, { r: 0, c: 2 }, makeTile(1));
+  setTile(game.board, { r: 0, c: 3 }, makeTile(0));
 }
 
 describe("Game.trySwap special combo", () => {
@@ -40,5 +50,90 @@ describe("Game.trySwap special combo", () => {
     expect(out.bounced).toBe(true);
     expect(game.moves).toBe(moves);
     expect(getTile(game.board, { r: 3, c: 3 })?.special).toBe("bomb");
+  });
+});
+
+describe("Game boss", () => {
+  it("deals damage equal to tiles cleared", () => {
+    const game = new Game(1);
+    threeMatchSwap(game);
+    const hp = game.bossHp;
+    const out = game.trySwap({ r: 0, c: 2 }, { r: 0, c: 3 });
+    expect(out.bounced).toBe(false);
+    expect(out.result?.cleared).toBeGreaterThan(0);
+    expect(game.bossHp).toBe(hp - (out.result?.cleared ?? 0));
+    expect(game.lastDamage).toBe(out.result?.cleared);
+  });
+
+  it("wins when the boss dies, even on the last move", () => {
+    const game = new Game(1);
+    game.run.moves = 1;
+    game.run.bossHp = 3;
+    threeMatchSwap(game);
+    game.trySwap({ r: 0, c: 2 }, { r: 0, c: 3 });
+    expect(game.bossHp).toBe(0);
+    expect(game.phase).toBe("win");
+    expect(game.trySwap({ r: 0, c: 0 }, { r: 0, c: 1 }).result).toBeNull();
+  });
+
+  it("skips leftover level-ups after a kill", () => {
+    const game = new Game(1);
+    game.run.bossHp = 3;
+    game.run.xp = game.xpToNext - 1;
+    threeMatchSwap(game);
+    game.trySwap({ r: 0, c: 2 }, { r: 0, c: 3 });
+    expect(game.phase).toBe("win");
+    expect(game.offeredCards).toHaveLength(0);
+  });
+
+  it("loses when moves run out and the boss lives", () => {
+    const game = new Game(1);
+    game.run.moves = 1;
+    game.run.bossHp = 9999;
+    threeMatchSwap(game);
+    game.trySwap({ r: 0, c: 2 }, { r: 0, c: 3 });
+    expect(game.bossHp).toBeGreaterThan(0);
+    expect(game.phase).toBe("lose");
+  });
+
+  it("levels up before losing on the last move", () => {
+    const game = new Game(1);
+    game.run.moves = 1;
+    game.run.bossHp = 9999;
+    game.run.xp = game.xpToNext - 1;
+    threeMatchSwap(game);
+    game.trySwap({ r: 0, c: 2 }, { r: 0, c: 3 });
+    expect(game.phase).toBe("levelUp");
+    while (game.phase === "levelUp") {
+      const pick = game.offeredCards[0];
+      expect(pick).toBeDefined();
+      if (!pick) return;
+      game.chooseOfferedCard(pick.id);
+    }
+    expect(game.phase).toBe("lose");
+  });
+
+  it("shuffles a deadlocked board on phase sync", () => {
+    const game = new Game(1);
+    game.board = noMatchGrid();
+    expect(hasPossibleSwap(game.board)).toBe(false);
+    game.grantXp(0);
+    expect(game.phase).toBe("idle");
+    expect(hasMatch(game.board)).toBe(false);
+    expect(hasPossibleSwap(game.board)).toBe(true);
+  });
+
+  it("restart restores a fresh run", () => {
+    const game = new Game(1);
+    game.run.bossHp = 0;
+    game.phase = "win";
+    game.ownedCardIds.push("autoDetonate");
+    game.restart(2);
+    expect(game.phase).toBe("idle");
+    expect(game.bossHp).toBe(game.bossMaxHp);
+    expect(game.moves).toBe(STARTING_MOVES);
+    expect(game.ownedCardIds).toHaveLength(0);
+    expect(hasMatch(game.board)).toBe(false);
+    expect(hasPossibleSwap(game.board)).toBe(true);
   });
 });

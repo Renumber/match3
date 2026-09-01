@@ -6,7 +6,7 @@
 
 Candy Crush × Vampire Survivors. Balatro처럼 계산하지 않는다.
 
-현재: Match → 특수 → 연쇄 → XP → 3택까지 웹에서 돈다. 보스 / Bonus Chain / Final Burst는 아직.
+현재: Match → 특수 → 연쇄 → XP → 3택 → 보스 처치/패배까지 웹에서 돈다. Bonus Chain / Final Burst는 아직.
 
 ## 문서
 

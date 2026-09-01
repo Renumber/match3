@@ -11,7 +11,12 @@ const GAP = 6;
 export type HudHooks = {
   setChain: (value: number) => void;
   setCleared: (value: number) => void;
+  setBossHp?: (current: number, max: number) => void;
   onResolved?: () => void;
+};
+
+export type BoardView = {
+  rebuild: () => void;
 };
 
 type Drag = {
@@ -25,7 +30,7 @@ type Occupant = {
   tile: Tile;
 };
 
-export function mountBoard(app: Application, game: Game, hud: HudHooks): void {
+export function mountBoard(app: Application, game: Game, hud: HudHooks): BoardView {
   const root = new Container();
   const bgLayer = new Graphics();
   const tileLayer = new Container();
@@ -134,7 +139,9 @@ export function mountBoard(app: Application, game: Game, hud: HudHooks): void {
 
   const playEvents = async (events: GameEvent[], clearedTotal: number) => {
     let shownCleared = game.totalCleared - clearedTotal;
+    let shownHp = game.bossHp + game.lastDamage;
     hud.setCleared(shownCleared);
+    hud.setBossHp?.(shownHp, game.bossMaxHp);
     let i = 0;
     while (i < events.length) {
       const event = events[i];
@@ -201,6 +208,8 @@ export function mountBoard(app: Application, game: Game, hud: HudHooks): void {
           }
           shownCleared += event.cells.length;
           hud.setCleared(shownCleared);
+          shownHp = Math.max(game.bossHp, shownHp - event.cells.length);
+          hud.setBossHp?.(shownHp, game.bossMaxHp);
           break;
         }
         case "spawn": {
@@ -334,6 +343,7 @@ export function mountBoard(app: Application, game: Game, hud: HudHooks): void {
     if (!busy) rebuild();
   });
   rebuild();
+  return { rebuild };
 }
 
 function drawTile(g: Graphics, tile: Tile | null, size: number, selected: boolean): void {

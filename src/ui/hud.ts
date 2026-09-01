@@ -4,6 +4,7 @@ export type Hud = {
   setMoves: (value: number) => void;
   setLevel: (value: number) => void;
   setXp: (current: number, next: number) => void;
+  setBoss: (name: string, current: number, max: number) => void;
   setUpgrades: (items: { title: string; count: number }[]) => void;
 };
 
@@ -21,6 +22,9 @@ export function mountHud(): Hud {
   const xpLabel = mustEl("#xp-label");
   const xpFill = mustEl<HTMLElement>("#xp-fill");
   const upgradesEl = mustEl("#upgrades");
+  const bossNameEl = mustEl("#boss-name");
+  const bossFill = mustEl<HTMLElement>("#boss-fill");
+  const bossHpEl = mustEl("#boss-hp");
 
   return {
     setChain: (value) => {
@@ -39,6 +43,12 @@ export function mountHud(): Hud {
       xpLabel.textContent = `${current}/${next}`;
       const pct = next <= 0 ? 0 : Math.min(100, Math.round((current / next) * 100));
       xpFill.style.width = `${pct}%`;
+    },
+    setBoss: (name, current, max) => {
+      bossNameEl.textContent = name;
+      bossHpEl.textContent = `${current}/${max}`;
+      const pct = max <= 0 ? 0 : Math.min(100, Math.round((current / max) * 100));
+      bossFill.style.width = `${pct}%`;
     },
     setUpgrades: (items) => {
       upgradesEl.replaceChildren();

@@ -1,12 +1,12 @@
 import { bothSpecials } from "./combo.ts";
 import { createFilledBoard, getTile, swapTiles } from "./board.ts";
-import { hasMatch } from "./match.ts";
+import { hasMatch, hasPossibleSwap, shuffleUntilPlayable } from "./match.ts";
 import { mulberry32, type Rng } from "./rng.ts";
 import { resolveBoard } from "./resolve.ts";
 import { isAdjacent, type Pos, type Tile } from "./types.ts";
 import type { ResolveResult } from "./events.ts";
 import type { LevelUpCard } from "../data/levelUpCards.ts";
-import { addXp, createRun, type RunProgress } from "./run.ts";
+import { addXp, applyBossDamage, createRun, type RunProgress } from "./run.ts";
 import {
   extraMovesAfterResolve,
   extraMovesOnLevel,
@@ -15,7 +15,7 @@ import {
 import { applyUpgradeEffect, defaultUpgradeStats, type UpgradeStats } from "./upgradeStats.ts";
 import { offerLevelUpCards } from "./levelUp.ts";
 
-export type GamePhase = "idle" | "levelUp";
+export type GamePhase = "idle" | "levelUp" | "win" | "lose";
 
 export type SwapOutcome = {
   bounced: boolean;
@@ -25,10 +25,11 @@ export type SwapOutcome = {
 function createStableBoard(rng: Rng): (Tile | null)[][] {
   for (let i = 0; i < 48; i++) {
     const board = createFilledBoard(rng);
-    if (!hasMatch(board)) return board;
+    if (!hasMatch(board) && hasPossibleSwap(board)) return board;
   }
   const board = createFilledBoard(rng);
   resolveBoard(board, rng);
+  if (!hasPossibleSwap(board)) shuffleUntilPlayable(board, rng);
   return board;
 }
 
@@ -37,6 +38,7 @@ export class Game {
   rng: Rng;
   lastChain = 0;
   totalCleared = 0;
+  lastDamage = 0;
   phase: GamePhase = "idle";
   run: RunProgress;
   upgrades: UpgradeStats;
@@ -70,12 +72,37 @@ export class Game {
     return this.run.pendingLevelUps;
   }
 
+  get bossName(): string {
+    return this.run.bossName;
+  }
+
+  get bossHp(): number {
+    return this.run.bossHp;
+  }
+
+  get bossMaxHp(): number {
+    return this.run.bossMaxHp;
+  }
+
   grantXp(amount: number): void {
     const before = this.run.level;
     addXp(this.run, amount);
     const gained = this.run.level - before;
     if (gained > 0) this.run.moves += extraMovesOnLevel(gained, this.upgrades);
-    this.syncLevelUp();
+    this.syncPhase();
+  }
+
+  restart(seed = Date.now()): void {
+    this.rng = mulberry32(seed);
+    this.board = createStableBoard(this.rng);
+    this.lastChain = 0;
+    this.totalCleared = 0;
+    this.lastDamage = 0;
+    this.phase = "idle";
+    this.run = createRun();
+    this.upgrades = defaultUpgradeStats();
+    this.ownedCardIds = [];
+    this.offeredCards = [];
   }
 
   chooseOfferedCard(cardId: string): boolean {
@@ -86,7 +113,7 @@ export class Game {
     this.ownedCardIds.push(card.id);
     this.run.pendingLevelUps -= 1;
     this.offeredCards = [];
-    this.syncLevelUp();
+    this.syncPhase();
     return true;
   }
 
@@ -104,6 +131,7 @@ export class Game {
     swapTiles(this.board, a, b);
     if (!specialSwap && !hasMatch(this.board)) {
       swapTiles(this.board, a, b);
+      this.lastDamage = 0;
       return {
         bounced: true,
         result: { events: [{ type: "bounce", a, b }], cleared: 0, chain: 0 },
@@ -120,8 +148,10 @@ export class Game {
     this.run.moves -= 1;
     this.lastChain = result.chain;
     this.totalCleared += result.cleared;
+    this.lastDamage = applyBossDamage(this.run, result.cleared);
     this.grantXp(xpFromClears(result.cleared, this.upgrades));
     this.run.moves += extraMovesAfterResolve(result, this.upgrades);
+    this.syncPhase();
     return {
       bounced: false,
       result: {
@@ -131,15 +161,31 @@ export class Game {
     };
   }
 
-  private syncLevelUp(): void {
-    if (this.run.pendingLevelUps <= 0) {
-      this.phase = "idle";
+  private ensurePlayable(): void {
+    if (hasPossibleSwap(this.board)) return;
+    shuffleUntilPlayable(this.board, this.rng);
+  }
+
+  private syncPhase(): void {
+    if (this.run.bossHp <= 0) {
+      this.phase = "win";
       this.offeredCards = [];
       return;
     }
-    this.phase = "levelUp";
-    if (this.offeredCards.length === 0) {
-      this.offeredCards = offerLevelUpCards(this.rng, this.ownedCardIds, undefined, undefined, this.upgrades);
+    this.ensurePlayable();
+    if (this.run.pendingLevelUps > 0) {
+      this.phase = "levelUp";
+      if (this.offeredCards.length === 0) {
+        this.offeredCards = offerLevelUpCards(this.rng, this.ownedCardIds, undefined, undefined, this.upgrades);
+      }
+      return;
     }
+    if (this.run.moves <= 0) {
+      this.phase = "lose";
+      this.offeredCards = [];
+      return;
+    }
+    this.phase = "idle";
+    this.offeredCards = [];
   }
 }

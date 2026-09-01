@@ -6,6 +6,7 @@ import { mountBoard } from "./render/boardView.ts";
 import { mountCodex } from "./ui/codex.ts";
 import { mountHud } from "./ui/hud.ts";
 import { mountLevelUp } from "./ui/levelUp.ts";
+import { mountResult } from "./ui/result.ts";
 
 async function boot(): Promise<void> {
   const app = new Application();
@@ -35,27 +36,53 @@ async function boot(): Promise<void> {
     hud.setMoves(game.moves);
     hud.setLevel(game.level);
     hud.setXp(game.xp, game.xpToNext);
+    hud.setBoss(game.bossName, game.bossHp, game.bossMaxHp);
     hud.setUpgrades(summarizeOwnedCards(game.ownedCardIds));
   };
 
   const levelUp = mountLevelUp((cardId) => {
     game.chooseOfferedCard(cardId);
     refreshHud();
-    syncLevelUp();
+    syncOverlays();
   });
 
-  const syncLevelUp = () => {
-    if (game.phase === "levelUp") levelUp.show(game.offeredCards);
-    else levelUp.hide();
+  let board: ReturnType<typeof mountBoard> | null = null;
+
+  const result = mountResult(() => {
+    game.restart();
+    board?.rebuild();
+    refreshHud();
+    syncOverlays();
+  });
+
+  const syncOverlays = () => {
+    if (game.phase === "levelUp") {
+      result.hide();
+      levelUp.show(game.offeredCards);
+      return;
+    }
+    levelUp.hide();
+    if (game.phase === "win" || game.phase === "lose") {
+      result.show(game.phase, {
+        bossName: game.bossName,
+        bossHp: game.bossHp,
+        bossMaxHp: game.bossMaxHp,
+        cleared: game.totalCleared,
+        moves: game.moves,
+      });
+      return;
+    }
+    result.hide();
   };
 
   refreshHud();
-  mountBoard(app, game, {
+  board = mountBoard(app, game, {
     setChain: hud.setChain,
     setCleared: hud.setCleared,
+    setBossHp: (current, max) => hud.setBoss(game.bossName, current, max),
     onResolved: () => {
       refreshHud();
-      syncLevelUp();
+      syncOverlays();
     },
   });
 }

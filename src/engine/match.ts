@@ -1,5 +1,7 @@
-import { COLS, ROWS, type MatchGroup, type Pos, type Tile } from "./types.ts";
-import { getTile } from "./board.ts";
+import { bothSpecials } from "./combo.ts";
+import { getTile, setTile, swapTiles, randomColor } from "./board.ts";
+import { shuffleInPlace, type Rng } from "./rng.ts";
+import { COLS, ROWS, inBounds, type MatchGroup, type Pos, type Tile } from "./types.ts";
 
 type Run = {
   dir: "h" | "v";
@@ -208,4 +210,63 @@ export function findMatches(board: (Tile | null)[][], lastMoved?: Pos): MatchGro
 
 export function hasMatch(board: (Tile | null)[][]): boolean {
   return findMatches(board).length > 0;
+}
+
+export function hasPossibleSwap(board: (Tile | null)[][]): boolean {
+  for (let r = 0; r < ROWS; r++) {
+    for (let c = 0; c < COLS; c++) {
+      const a: Pos = { r, c };
+      const tileA = getTile(board, a);
+      if (!tileA) continue;
+      const neighbors: Pos[] = [
+        { r, c: c + 1 },
+        { r: r + 1, c },
+      ];
+      for (const b of neighbors) {
+        if (!inBounds(b)) continue;
+        const tileB = getTile(board, b);
+        if (!tileB) continue;
+        if (bothSpecials(tileA.special, tileB.special)) return true;
+        swapTiles(board, a, b);
+        const matched = hasMatch(board);
+        swapTiles(board, a, b);
+        if (matched) return true;
+      }
+    }
+  }
+  return false;
+}
+
+export function shuffleUntilPlayable(board: (Tile | null)[][], rng: Rng): void {
+  const slots: Pos[] = [];
+  const tiles: Tile[] = [];
+  for (let r = 0; r < ROWS; r++) {
+    for (let c = 0; c < COLS; c++) {
+      const tile = getTile(board, { r, c });
+      if (!tile) continue;
+      slots.push({ r, c });
+      tiles.push(tile);
+    }
+  }
+  if (tiles.length === 0) return;
+  for (let attempt = 0; attempt < 64; attempt++) {
+    shuffleInPlace(tiles, rng);
+    for (let i = 0; i < slots.length; i++) {
+      const slot = slots[i];
+      const tile = tiles[i];
+      if (!slot || !tile) continue;
+      setTile(board, slot, tile);
+    }
+    if (!hasMatch(board) && hasPossibleSwap(board)) return;
+  }
+  for (let attempt = 0; attempt < 32; attempt++) {
+    for (let r = 0; r < ROWS; r++) {
+      for (let c = 0; c < COLS; c++) {
+        const tile = getTile(board, { r, c });
+        if (!tile) continue;
+        tile.color = randomColor(rng, board, { r, c });
+      }
+    }
+    if (!hasMatch(board) && hasPossibleSwap(board)) return;
+  }
 }
