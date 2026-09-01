@@ -79,7 +79,7 @@ export function mountHud(): Hud {
       const lateFrac = max <= 0 || lateAt <= 0 ? 0 : lateAt / max;
       const lateW = Math.min(hpFrac, lateFrac) * 100;
       const earlyW = Math.max(0, hpFrac - lateFrac) * 100;
-      bossBarEl.style.setProperty("--boss-early", info.earlyColor ?? "#e7e5e4");
+      bossBarEl.style.setProperty("--boss-early", info.earlyColor ?? "#fbbf24");
       bossBarEl.style.setProperty("--boss-late", info.lateColor ?? "#e11d48");
       bossFillLateEl.style.width = `${lateW}%`;
       bossFillEarlyEl.style.left = `${lateFrac * 100}%`;

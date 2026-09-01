@@ -34,6 +34,11 @@ describe("boss catalog", () => {
     expect(plateLateAt(BARE)).toBe(0);
   });
 
+  it("uses a chromatic early bar, not gray stone", () => {
+    expect(STAGE1_BOSS.bar?.early).toBe("#fbbf24");
+    expect(STAGE1_BOSS.bar?.late).toBe("#e11d48");
+  });
+
   it("skips plates when the boss has none", () => {
     const board = createFilledBoard(mulberry32(1));
     placeBossTiles(board, BARE);

@@ -48,7 +48,7 @@ export const GOLEM: BossDef = {
   name: "골렘",
   hp: 30,
   lateAt: 10,
-  bar: { early: "#e7e5e4", late: "#e11d48" },
+  bar: { early: "#fbbf24", late: "#e11d48" },
   gimmicks: [
     { type: "plates", cells: GOLEM_PLATES, hits: 3, damage: 1 },
   ],
