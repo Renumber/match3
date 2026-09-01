@@ -1,6 +1,6 @@
 import { bothSpecials } from "./combo.ts";
 import { createFilledBoard, getTile, swapTiles } from "./board.ts";
-import { applyResolveToBoss, armorHitsOnBoard, placeBossTiles, platePositions, syncBossTiles } from "./boss.ts";
+import { applyResolveToBoss, armorHitsOnBoard, placeBossTiles, platePositions, refillBossTiles, syncBossTiles } from "./boss.ts";
 import { hasMatch, hasPossibleSwap, shuffleUntilPlayable } from "./match.ts";
 import { mulberry32, type Rng } from "./rng.ts";
 import { resolveBoard } from "./resolve.ts";
@@ -32,7 +32,14 @@ function createStableBoard(rng: Rng, boss: BossDef): (Tile | null)[][] {
   }
   const board = createFilledBoard(rng);
   placeBossTiles(board, boss);
-  resolveBoard(board, rng);
+  resolveBoard(
+    board,
+    rng,
+    undefined,
+    defaultUpgradeStats(),
+    undefined,
+    (next, stepRng, destroyed) => refillBossTiles(next, stepRng, boss, destroyed),
+  );
   if (!hasPossibleSwap(board)) shuffleUntilPlayable(board, rng);
   return board;
 }
@@ -174,6 +181,8 @@ export class Game {
       b,
       this.upgrades,
       specialSwap ? { a, b } : undefined,
+      (board, rng, destroyed) =>
+        refillBossTiles(board, rng, this.boss, destroyed, this.run.bossLate),
     );
     const destroyedPlates = beforePlates.filter((at) => !getTile(this.board, at)?.blocker);
     this.run.moves -= 1;

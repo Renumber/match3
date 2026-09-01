@@ -73,8 +73,9 @@ describe("boss catalog", () => {
     placeBossTiles(board, STAGE1_BOSS);
     const gone = { r: 3, c: 3 };
     setTile(board, gone, makeTile(1));
-    refillBossTiles(board, mulberry32(9), STAGE1_BOSS, [gone]);
+    const events = refillBossTiles(board, mulberry32(9), STAGE1_BOSS, [gone]);
     expect(getTile(board, gone)?.blocker).toBeFalsy();
+    expect(events.some((event) => event.type === "spawn" && event.tile.blocker)).toBe(true);
     let n = 0;
     for (let r = 0; r < 8; r++) {
       for (let c = 0; c < 8; c++) {
