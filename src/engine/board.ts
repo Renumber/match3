@@ -19,10 +19,14 @@ export function makeTile(
   color: ColorId,
   special: Tile["special"] = "none",
   plain = false,
+  echoDepth = 0,
 ): Tile {
   const id = nextId;
   nextId += 1;
-  return plain ? { id, color, special, plain: true } : { id, color, special };
+  const tile: Tile = { id, color, special };
+  if (plain) tile.plain = true;
+  if (echoDepth > 0) tile.echoDepth = echoDepth;
+  return tile;
 }
 
 export function emptyBoard(): (Tile | null)[][] {

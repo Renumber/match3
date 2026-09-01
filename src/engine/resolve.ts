@@ -23,13 +23,17 @@ type ActivateJob = {
   at: Pos;
   special: Special;
   plain?: boolean;
+  echoDepth?: number;
 };
 
 type EchoJob = {
   at: Pos;
   special: Special;
   color: number;
+  echoDepth: number;
 };
+
+const MAX_ECHO_WAVES = 8;
 
 function addCell(set: Set<string>, cells: Pos[], p: Pos): void {
   const k = posKey(p);
@@ -58,6 +62,7 @@ function activateSpecials(
     if (seenActivate.has(ak)) continue;
     seenActivate.add(ak);
     const applyStats = next.plain ? defaultUpgradeStats() : stats;
+    const echoDepth = next.echoDepth ?? 0;
     fxEvents.push({ type: "activate", at: next.at, special: next.special });
     addCell(clearSet, toClear, next.at);
     fxEvents.push(...specialActivateFx(next.special, next.at, applyStats));
@@ -68,22 +73,26 @@ function activateSpecials(
       }
       const tile = getTile(board, cell);
       if (tile && tile.special !== "none" && posKey(cell) !== posKey(next.at)) {
-        queue.push({ at: cell, special: tile.special, plain: Boolean(tile.plain) });
+        queue.push({
+          at: cell,
+          special: tile.special,
+          plain: Boolean(tile.plain),
+          echoDepth: tile.echoDepth ?? 0,
+        });
       }
       addCell(clearSet, toClear, cell);
     }
-    if (!next.plain) {
-      const color = getTile(board, next.at)?.color ?? 0;
-      for (const burst of collectEchoBursts({
-        special: next.special,
-        origin: next.at,
-        board,
-        rng,
-        stats,
-        struck,
-      })) {
-        echoes.push({ ...burst, color });
-      }
+    const color = getTile(board, next.at)?.color ?? 0;
+    for (const burst of collectEchoBursts({
+      special: next.special,
+      origin: next.at,
+      board,
+      rng,
+      stats,
+      struck,
+      echoDepth,
+    })) {
+      echoes.push({ ...burst, color, echoDepth: echoDepth + 1 });
     }
   }
   return { fxEvents, echoes };
@@ -97,7 +106,7 @@ function plantEchoes(
   const ids = new Set<number>();
   for (const echo of pending) {
     if (!inBounds(echo.at) || getTile(board, echo.at)) continue;
-    const tile = makeTile(echo.color, echo.special, true);
+    const tile = makeTile(echo.color, echo.special, true, echo.echoDepth);
     setTile(board, echo.at, tile);
     events.push({ type: "spawn", at: echo.at, special: echo.special, tile });
     ids.add(tile.id);
@@ -114,7 +123,12 @@ function jobsForTileIds(board: (Tile | null)[][], ids: Set<number>): ActivateJob
     for (let c = 0; c < row.length; c++) {
       const tile = row[c];
       if (!tile || tile.special === "none" || !ids.has(tile.id)) continue;
-      jobs.push({ at: { r, c }, special: tile.special, plain: Boolean(tile.plain) });
+      jobs.push({
+        at: { r, c },
+        special: tile.special,
+        plain: Boolean(tile.plain),
+        echoDepth: tile.echoDepth ?? 0,
+      });
     }
   }
   return jobs;
@@ -180,7 +194,12 @@ export function resolveBoard(
       for (const cell of match.cells) {
         const tile = getTile(board, cell);
         if (tile && tile.special !== "none") {
-          activateQueue.push({ at: cell, special: tile.special, plain: Boolean(tile.plain) });
+          activateQueue.push({
+            at: cell,
+            special: tile.special,
+            plain: Boolean(tile.plain),
+            echoDepth: tile.echoDepth ?? 0,
+          });
         }
         addCell(clearSet, toClear, cell);
       }
@@ -226,25 +245,28 @@ export function resolveBoard(
     }
 
     if (echoes.length) {
-      const planted = plantEchoes(board, echoes);
-      events.push(...planted.events);
-      const settled = settleBoard(board, rng);
-      if (settled.falls.length) events.push({ type: "fall", moves: settled.falls });
-      if (settled.drops.length) events.push({ type: "dropIn", drops: settled.drops });
-      if (shouldAutoDetonate(stats) && planted.ids.size) {
+      let pending = echoes;
+      for (let wave = 0; wave < MAX_ECHO_WAVES && pending.length; wave++) {
+        const planted = plantEchoes(board, pending);
+        events.push(...planted.events);
+        const settled = settleBoard(board, rng);
+        if (settled.falls.length) events.push({ type: "fall", moves: settled.falls });
+        if (settled.drops.length) events.push({ type: "dropIn", drops: settled.drops });
+        pending = [];
+        if (!shouldAutoDetonate(stats) || !planted.ids.size) break;
         const echoJobs = jobsForTileIds(board, planted.ids);
-        if (echoJobs.length) {
-          const echoClear: Pos[] = [];
-          const echoSet = new Set<string>();
-          const boom = activateSpecials(board, rng, echoJobs, echoSet, echoClear, stats);
-          events.push(...boom.fxEvents);
-          const extra = clearActivated(board, echoClear);
-          events.push(...extra.events);
-          cleared += extra.cleared;
-          const refill = settleBoard(board, rng);
-          if (refill.falls.length) events.push({ type: "fall", moves: refill.falls });
-          if (refill.drops.length) events.push({ type: "dropIn", drops: refill.drops });
-        }
+        if (!echoJobs.length) break;
+        const echoClear: Pos[] = [];
+        const echoSet = new Set<string>();
+        const boom = activateSpecials(board, rng, echoJobs, echoSet, echoClear, stats);
+        events.push(...boom.fxEvents);
+        const extra = clearActivated(board, echoClear);
+        events.push(...extra.events);
+        cleared += extra.cleared;
+        const refill = settleBoard(board, rng);
+        if (refill.falls.length) events.push({ type: "fall", moves: refill.falls });
+        if (refill.drops.length) events.push({ type: "dropIn", drops: refill.drops });
+        pending = boom.echoes;
       }
     } else {
       const { falls, drops } = settleBoard(board, rng);

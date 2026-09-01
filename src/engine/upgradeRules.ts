@@ -12,11 +12,11 @@ import { pickInt, shuffleInPlace, type Rng } from "./rng.ts";
 import {
   lineCols,
   lineRows,
-  pickSquareCorners,
   specialFromThreeMatch,
   spreadIndices,
+  squareCorners,
 } from "./specialShape.ts";
-import type { UpgradeStats } from "./upgradeStats.ts";
+import { echoChance, UPGRADE_STAT_DEFS, type UpgradeStats } from "./upgradeStats.ts";
 
 export type SpecialOriginCtx = {
   special: Special;
@@ -38,7 +38,7 @@ export type UpgradeRule = {
   id: string;
   extraCells?: (ctx: SpecialCellCtx) => Pos[];
   extraFx?: (ctx: SpecialOriginCtx) => GameEvent[];
-  echoBursts?: (ctx: SpecialCellCtx & { struck: Pos[] }) => EchoBurst[];
+  echoBursts?: (ctx: SpecialCellCtx & { struck: Pos[]; echoDepth?: number }) => EchoBurst[];
   threeMatchSpawn?: (ctx: {
     cells: Pos[];
     origin: Pos;
@@ -116,56 +116,75 @@ function struckWithoutOrigin(struck: Pos[], origin: Pos): Pos[] {
   return struck.filter((cell) => cell.r !== origin.r || cell.c !== origin.c);
 }
 
-function pickStruckEchoes(
-  struck: Pos[],
-  origin: Pos,
-  count: number,
-  rng: Rng,
-  special: Special,
-): EchoBurst[] {
-  if (count <= 0) return [];
-  const cells = struckWithoutOrigin(struck, origin);
-  shuffleInPlace(cells, rng);
-  return cells.slice(0, count).map((at) => ({ at, special }));
-}
-
 function pickLineDir(rng: Rng): "lineH" | "lineV" {
   return rng() < 0.5 ? "lineH" : "lineV";
 }
 
+function rollEchoes(
+  cells: Pos[],
+  chance: number,
+  rng: Rng,
+  specialOf: (rng: Rng) => Special,
+  maxCount: number,
+): EchoBurst[] {
+  if (chance <= 0 || maxCount <= 0 || cells.length === 0) return [];
+  const pool = [...cells];
+  shuffleInPlace(pool, rng);
+  const out: EchoBurst[] = [];
+  for (const at of pool) {
+    if (out.length >= maxCount) break;
+    if (rng() >= chance) continue;
+    out.push({ at, special: specialOf(rng) });
+  }
+  return out;
+}
+
 const lineEcho: UpgradeRule = {
   id: "lineEcho",
-  echoBursts: ({ special, origin, stats, struck, rng }) => {
+  echoBursts: ({ special, origin, stats, struck, rng, echoDepth = 0 }) => {
     if ((special !== "lineH" && special !== "lineV") || stats.lineEcho <= 0) return [];
-    const cells = struckWithoutOrigin(struck, origin);
-    shuffleInPlace(cells, rng);
-    return cells.slice(0, stats.lineEcho).map((at) => ({ at, special: pickLineDir(rng) }));
+    return rollEchoes(
+      struckWithoutOrigin(struck, origin),
+      echoChance(stats.lineEcho, UPGRADE_STAT_DEFS.lineEcho.cap, echoDepth),
+      rng,
+      pickLineDir,
+      UPGRADE_STAT_DEFS.lineEcho.cap,
+    );
   },
 };
 
 const bombEcho: UpgradeRule = {
   id: "bombEcho",
-  echoBursts: ({ special, origin, stats, rng }) => {
+  echoBursts: ({ special, origin, stats, rng, echoDepth = 0 }) => {
     if (special !== "bomb" || stats.bombEcho <= 0) return [];
-    return pickSquareCorners(origin, stats.bombRadius, stats.bombEcho, rng).map((at) => ({
-      at,
-      special: "bomb" as const,
-    }));
+    return rollEchoes(
+      squareCorners(origin, stats.bombRadius),
+      echoChance(stats.bombEcho, UPGRADE_STAT_DEFS.bombEcho.cap, echoDepth),
+      rng,
+      () => "bomb",
+      UPGRADE_STAT_DEFS.bombEcho.cap,
+    );
   },
 };
 
 const lightningEcho: UpgradeRule = {
   id: "lightningEcho",
-  echoBursts: ({ special, origin, stats, struck, rng }) => {
+  echoBursts: ({ special, origin, stats, struck, rng, echoDepth = 0 }) => {
     if (special !== "lightning" || stats.lightningEcho <= 0) return [];
-    return pickStruckEchoes(struck, origin, stats.lightningEcho, rng, "lightning");
+    return rollEchoes(
+      struckWithoutOrigin(struck, origin),
+      echoChance(stats.lightningEcho, UPGRADE_STAT_DEFS.lightningEcho.cap, echoDepth),
+      rng,
+      () => "lightning",
+      UPGRADE_STAT_DEFS.lightningEcho.cap,
+    );
   },
 };
 
 const lightningSeedBomb: UpgradeRule = {
   id: "lightningSeedBomb",
-  echoBursts: ({ special, origin, stats, struck, rng }) => {
-    if (special !== "lightning" || !stats.lightningSeedBomb) return [];
+  echoBursts: ({ special, origin, stats, struck, rng, echoDepth = 0 }) => {
+    if (special !== "lightning" || !stats.lightningSeedBomb || echoDepth > 0) return [];
     const cells = struckWithoutOrigin(struck, origin);
     if (!cells.length) return [];
     const at = cells[pickInt(rng, cells.length)];
@@ -245,7 +264,9 @@ export function extraSpecialFx(ctx: SpecialOriginCtx): GameEvent[] {
   return events;
 }
 
-export function collectEchoBursts(ctx: SpecialCellCtx & { struck: Pos[] }): EchoBurst[] {
+export function collectEchoBursts(
+  ctx: SpecialCellCtx & { struck: Pos[]; echoDepth?: number },
+): EchoBurst[] {
   const bursts: EchoBurst[] = [];
   const seen = new Set<string>();
   for (const rule of UPGRADE_RULES) {

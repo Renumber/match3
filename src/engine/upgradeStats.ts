@@ -1,5 +1,12 @@
 import { BOMB_RADIUS, LIGHTNING_BASE_TARGETS } from "./types.ts";
 
+export const ECHO_DECAY = 0.5;
+
+export function echoChance(stacks: number, cap: number, depth = 0): number {
+  if (stacks <= 0 || cap <= 0) return 0;
+  return Math.min(1, stacks / cap) * ECHO_DECAY ** depth;
+}
+
 type AddDef = { merge: "add"; default: number };
 type SetDef = { merge: "set"; default: number };
 type OrDef = { merge: "or"; default: boolean };

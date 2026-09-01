@@ -1,7 +1,7 @@
 import { LEVEL_UP_CARDS, UPGRADE_TAG_LABEL, type LevelUpCard, type UpgradeTag } from "../data/levelUpCards.ts";
 import { offerWeight, isCardSpent, tagAffinity } from "./levelUp.ts";
 import { THREE_MATCH_SPECIAL_WEIGHTS } from "./specialShape.ts";
-import { UPGRADE_STAT_DEFS, type UpgradeEffect, type UpgradeStats } from "./upgradeStats.ts";
+import { echoChance, UPGRADE_STAT_DEFS, type UpgradeEffect, type UpgradeStats } from "./upgradeStats.ts";
 
 export type InfoRow = {
   label: string;
@@ -42,10 +42,16 @@ export function effectLines(effect: UpgradeEffect): string[] {
     lines.push(`Chain ${effect.chainMoveThreshold}에 Move +${effect.chainMoveBonus ?? 1}`);
   }
   if (effect.crossLine) lines.push("라인 십자");
-  if (effect.lineEcho) lines.push(`랜덤 방향 직선 +${effect.lineEcho}`);
+  if (effect.lineEcho) {
+    lines.push(`잔류 직선 확률 ${percent(effect.lineEcho / UPGRADE_STAT_DEFS.lineEcho.cap)}`);
+  }
   if (effect.bombCross) lines.push("폭탄 십자");
-  if (effect.bombEcho) lines.push(`랜덤 모서리 작은 폭탄 +${effect.bombEcho}`);
-  if (effect.lightningEcho) lines.push(`잔류 번개 +${effect.lightningEcho}`);
+  if (effect.bombEcho) {
+    lines.push(`파편 확률 ${percent(effect.bombEcho / UPGRADE_STAT_DEFS.bombEcho.cap)}`);
+  }
+  if (effect.lightningEcho) {
+    lines.push(`잔류 번개 확률 ${percent(effect.lightningEcho / UPGRADE_STAT_DEFS.lightningEcho.cap)}`);
+  }
   if (effect.lightningSeedBomb) lines.push("번개 적중 칸에 작은 폭탄");
   if (effect.moveOnSpecial) lines.push(`특수 발동 시 Move +${effect.moveOnSpecial}`);
   if (effect.movesOnLevel) lines.push(`레벨업 Move +${effect.movesOnLevel}`);
@@ -61,10 +67,28 @@ export function runStatRows(stats: UpgradeStats): InfoRow[] {
     { label: "3매치 특수", value: percent(stats.specialSpawnChance) },
     { label: "자동 점화", value: onOff(stats.autoDetonate) },
     { label: "십자 절단", value: onOff(stats.crossLine) },
-    { label: "잔류 직선", value: stats.lineEcho > 0 ? `랜덤 칸·방향 ×${stats.lineEcho}` : "꺼짐" },
+    {
+      label: "잔류 직선",
+      value:
+        stats.lineEcho > 0
+          ? percent(echoChance(stats.lineEcho, UPGRADE_STAT_DEFS.lineEcho.cap))
+          : "꺼짐",
+    },
     { label: "십자 폭파", value: onOff(stats.bombCross) },
-    { label: "파편 폭탄", value: stats.bombEcho > 0 ? `랜덤 모서리 ×${stats.bombEcho}` : "꺼짐" },
-    { label: "잔류 번개", value: String(stats.lightningEcho) },
+    {
+      label: "파편 폭탄",
+      value:
+        stats.bombEcho > 0
+          ? percent(echoChance(stats.bombEcho, UPGRADE_STAT_DEFS.bombEcho.cap))
+          : "꺼짐",
+    },
+    {
+      label: "잔류 번개",
+      value:
+        stats.lightningEcho > 0
+          ? percent(echoChance(stats.lightningEcho, UPGRADE_STAT_DEFS.lightningEcho.cap))
+          : "꺼짐",
+    },
     { label: "낙뢰", value: onOff(stats.lightningSeedBomb) },
     {
       label: "체인 호흡",

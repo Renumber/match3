@@ -115,7 +115,7 @@ describe("resolveBoard", () => {
     ]);
     setTile(board, { r: 0, c: 1 }, makeTile(0, "bomb"));
     const stats = defaultUpgradeStats();
-    stats.bombEcho = 1;
+    stats.bombEcho = 4;
     stats.bombCross = true;
     const result = resolveBoard(board, mulberry32(1), { r: 0, c: 2 }, stats);
     const leftoverSpawn = result.events.find(
@@ -142,7 +142,7 @@ describe("resolveBoard", () => {
     ]);
     setTile(board, { r: 0, c: 1 }, makeTile(0, "bomb"));
     const stats = defaultUpgradeStats();
-    stats.bombEcho = 1;
+    stats.bombEcho = 4;
     stats.autoDetonate = true;
     const result = resolveBoard(board, mulberry32(1), { r: 0, c: 2 }, stats);
     const leftoverSpawn = result.events.findIndex(
@@ -172,7 +172,7 @@ describe("resolveBoard", () => {
     ]);
     setTile(board, { r: 0, c: 1 }, makeTile(0, "lineH"));
     const stats = defaultUpgradeStats();
-    stats.lineEcho = 1;
+    stats.lineEcho = 2;
     const result = resolveBoard(board, mulberry32(1), { r: 0, c: 2 }, stats);
     expect(result.events.some((e) => e.type === "activate" && e.special === "lineH")).toBe(true);
     expect(
@@ -199,7 +199,7 @@ describe("resolveBoard", () => {
     ]);
     setTile(board, { r: 0, c: 1 }, makeTile(0, "lightning"));
     const stats = defaultUpgradeStats();
-    stats.lightningEcho = 1;
+    stats.lightningEcho = 2;
     const result = resolveBoard(board, mulberry32(1), { r: 0, c: 2 }, stats);
     const lightningActivates = result.events.filter(
       (e) => e.type === "activate" && e.special === "lightning",

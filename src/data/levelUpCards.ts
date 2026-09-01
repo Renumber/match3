@@ -112,7 +112,7 @@ export const LEVEL_UP_CARDS: LevelUpCard[] = [
   {
     id: "lineEcho",
     title: "잔류 직선",
-    description: "지운 줄의 랜덤 칸에 가로 또는 세로 직선을 남긴다",
+    description: "지운 줄에 가로 또는 세로 직선이 남을 확률이 오른다",
     tags: ["line"],
     rarity: "uncommon",
     stackable: true,
@@ -130,7 +130,7 @@ export const LEVEL_UP_CARDS: LevelUpCard[] = [
   {
     id: "bombEcho",
     title: "파편 폭탄",
-    description: "랜덤한 폭발 모서리에 작은 폭탄을 남긴다",
+    description: "폭발 모서리에 작은 폭탄이 남을 확률이 오른다",
     tags: ["bomb"],
     rarity: "uncommon",
     stackable: true,
@@ -139,7 +139,7 @@ export const LEVEL_UP_CARDS: LevelUpCard[] = [
   {
     id: "lightningEcho",
     title: "잔류 번개",
-    description: "맞은 칸 중 랜덤에 번개를 남긴다",
+    description: "맞은 칸에 번개가 남을 확률이 오른다",
     tags: ["lightning"],
     rarity: "uncommon",
     stackable: true,

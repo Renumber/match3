@@ -49,7 +49,7 @@ describe("upgradeInfo", () => {
     const card = LEVEL_UP_CARDS.find((item) => item.id === "lineEcho");
     expect(card).toBeDefined();
     if (!card) return;
-    expect(effectLines(card.effect)).toContain("랜덤 방향 직선 +1");
+    expect(effectLines(card.effect)).toContain("잔류 직선 확률 50%");
   });
 
   it("prints numeric effect lines for a card", () => {

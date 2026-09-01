@@ -1,5 +1,11 @@
 import { describe, expect, it } from "vitest";
-import { applyUpgradeEffect, defaultUpgradeStats, UPGRADE_STAT_DEFS, xpFromClears } from "./upgrades.ts";
+import {
+  applyUpgradeEffect,
+  defaultUpgradeStats,
+  echoChance,
+  UPGRADE_STAT_DEFS,
+  xpFromClears,
+} from "./upgrades.ts";
 
 describe("applyUpgradeEffect", () => {
   it("builds defaults from the stat schema", () => {
@@ -43,6 +49,15 @@ describe("applyUpgradeEffect", () => {
     applyUpgradeEffect(stats, { crossLine: true, bombCross: true });
     expect(stats.crossLine).toBe(true);
     expect(stats.bombCross).toBe(true);
+  });
+
+  it("scales leftover chance with stacks and fades on later waves", () => {
+    expect(echoChance(0, 4)).toBe(0);
+    expect(echoChance(1, 4)).toBeCloseTo(0.25);
+    expect(echoChance(4, 4)).toBe(1);
+    expect(echoChance(4, 4, 1)).toBeCloseTo(0.5);
+    expect(echoChance(4, 4, 2)).toBeCloseTo(0.25);
+    expect(echoChance(1, 2)).toBeCloseTo(0.5);
   });
 
   it("caps leftover special counts", () => {
