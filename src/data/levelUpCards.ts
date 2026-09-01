@@ -75,7 +75,7 @@ export const LEVEL_UP_CARDS: LevelUpCard[] = [
   {
     id: "specialSpawnChance",
     title: "특수 생성",
-    description: "3매치에서도 특수 타일이 나올 수 있다",
+    description: "3매치에서 특수 타일이 나올 확률이 오른다",
     tags: [],
     rarity: "common",
     stackable: true,

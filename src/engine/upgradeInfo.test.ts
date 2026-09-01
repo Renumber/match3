@@ -56,7 +56,7 @@ describe("upgradeInfo", () => {
     const card = LEVEL_UP_CARDS.find((item) => item.id === "specialSpawnChance");
     expect(card).toBeDefined();
     if (!card) return;
-    expect(effectLines(card.effect)).toContain("3매치 특수 25%");
+    expect(effectLines(card.effect)).toContain("3매치 특수 +25%");
   });
 
   it("lets bomb radius stack up to 7×7", () => {
