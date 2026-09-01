@@ -1,6 +1,14 @@
 import { bothSpecials } from "./combo.ts";
 import { createFilledBoard, getTile, swapTiles } from "./board.ts";
-import { applyResolveToBoss, armorHitsOnBoard, placeBossTiles, platePositions, refillBossTiles, syncBossTiles } from "./boss.ts";
+import {
+  applyResolveToBoss,
+  armorHitsOnBoard,
+  lateRefillLocked,
+  placeBossTiles,
+  platePositions,
+  refillBossTiles,
+  syncBossTiles,
+} from "./boss.ts";
 import { hasMatch, hasPossibleSwap, shuffleUntilPlayable } from "./match.ts";
 import { mulberry32, type Rng } from "./rng.ts";
 import { resolveBoard } from "./resolve.ts";
@@ -175,21 +183,26 @@ export class Game {
       };
     }
 
+    const lateAt = plateLateAt(this.boss);
+    let broken = 0;
     const result = resolveBoard(
       this.board,
       this.rng,
       b,
       this.upgrades,
       specialSwap ? { a, b } : undefined,
-      (board, rng, destroyed) =>
-        refillBossTiles(board, rng, this.boss, destroyed, this.run.bossLate),
+      (board, rng, destroyed) => {
+        broken += destroyed.length;
+        const late = lateRefillLocked(this.run, broken, lateAt);
+        return refillBossTiles(board, rng, this.boss, destroyed, late);
+      },
     );
     const destroyedPlates = beforePlates.filter((at) => !getTile(this.board, at)?.blocker);
     this.run.moves -= 1;
     this.lastChain = result.chain;
     this.totalCleared += result.cleared;
-    this.lastDamage = applyResolveToBoss(this.run, result);
-    syncBossTiles(this.board, this.rng, this.run, this.boss, destroyedPlates);
+    this.lastDamage = applyResolveToBoss(this.run, result, lateAt);
+    const lateSpawns = syncBossTiles(this.board, this.rng, this.run, this.boss, destroyedPlates);
     this.grantXp(xpFromClears(result.cleared, this.upgrades, result.blockersCleared));
     this.run.moves += extraMovesAfterResolve(result, this.upgrades);
     this.syncPhase();
@@ -199,7 +212,7 @@ export class Game {
       bounced: false,
       result: {
         ...result,
-        events: [{ type: "swap", a, b }, ...result.events, ...extra],
+        events: [{ type: "swap", a, b }, ...result.events, ...extra, ...lateSpawns],
       },
     };
   }

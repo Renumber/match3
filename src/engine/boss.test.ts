@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { plateLateAt, STAGE1_BOSS, type BossDef } from "../data/bosses.ts";
 import { createFilledBoard, getTile, makeTile, setTile } from "./board.ts";
-import { applyBossHit, placeBossTiles, refillBossTiles, syncBossTiles } from "./boss.ts";
+import { applyBossHit, lateRefillLocked, placeBossTiles, refillBossTiles, syncBossTiles } from "./boss.ts";
 import { mulberry32 } from "./rng.ts";
 import { createRun } from "./run.ts";
 
@@ -26,6 +26,7 @@ describe("boss catalog", () => {
     placeBossTiles(board, STAGE1_BOSS);
     expect(getTile(board, { r: 3, c: 3 })?.blocker).toBe(true);
     expect(getTile(board, { r: 3, c: 3 })?.hits).toBe(3);
+    expect(plateGimmick().lateHits).toBe(5);
     expect(getTile(board, { r: 4, c: 4 })?.blocker).toBe(true);
   });
 
@@ -85,12 +86,12 @@ describe("boss catalog", () => {
     expect(n).toBe(4);
   });
 
-  it("dumps remaining hp as enraged plates when late hp is reached", () => {
+  it("dumps lateAt enraged plates at lateHits when late hp is reached", () => {
     const board = createFilledBoard(mulberry32(3));
     placeBossTiles(board, STAGE1_BOSS);
     const run = createRun();
     run.bossHp = 10;
-    syncBossTiles(board, mulberry32(4), run, STAGE1_BOSS, []);
+    const events = syncBossTiles(board, mulberry32(4), run, STAGE1_BOSS, []);
     expect(run.bossLate).toBe(true);
     const plates = [];
     for (let r = 0; r < 8; r++) {
@@ -100,7 +101,41 @@ describe("boss catalog", () => {
       }
     }
     expect(plates).toHaveLength(10);
-    expect(plates.every((tile) => tile.enraged)).toBe(true);
+    expect(plates.every((tile) => tile.enraged && tile.hits === 5)).toBe(true);
+    expect(events.filter((event) => event.type === "spawn" && event.tile.enraged)).toHaveLength(10);
+  });
+
+  it("caps overshooting early breaks so late still opens with 10 plates", () => {
+    const board = createFilledBoard(mulberry32(3));
+    placeBossTiles(board, STAGE1_BOSS);
+    const run = createRun();
+    run.bossHp = 12;
+    expect(applyBossHit(run, { cleared: 0, blockersCleared: 8, lateAt: 10 })).toBe(2);
+    expect(run.bossHp).toBe(10);
+    syncBossTiles(board, mulberry32(4), run, STAGE1_BOSS, []);
+    expect(run.bossLate).toBe(true);
+    let n = 0;
+    for (let r = 0; r < 8; r++) {
+      for (let c = 0; c < 8; c++) {
+        const tile = getTile(board, { r, c });
+        if (tile?.blocker) {
+          n += 1;
+          expect(tile.enraged).toBe(true);
+          expect(tile.hits).toBe(5);
+        }
+      }
+    }
+    expect(n).toBe(10);
+  });
+
+  it("locks early refill once remaining hp would enter late", () => {
+    const run = createRun();
+    run.bossHp = 12;
+    expect(lateRefillLocked(run, 1, 10)).toBe(false);
+    expect(lateRefillLocked(run, 2, 10)).toBe(true);
+    expect(lateRefillLocked(run, 8, 10)).toBe(true);
+    run.bossLate = true;
+    expect(lateRefillLocked(run, 0, 10)).toBe(true);
   });
 
   it("does not refill plates after late phase", () => {

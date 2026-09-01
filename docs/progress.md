@@ -34,7 +34,7 @@
 | 8×8, 색 5, Moves 40, 인접 스왑, 매치 없으면 튕김. 특수끼리 스왑은 매치 없어도 발동 | Bonus Chain, Final Burst, Critical Mass |
 | 일반 스왑만 Move -1. 교착이면 셔플 | `fsm.ts` 파일. Bonus 단계는 없음 |
 | XP → 레벨업 3택 | |
-| 보스 골렘 HP 30, 갑옷 판 3타. 파괴=1HP·+5 XP. 초반 4장 재생성(잔류·낙하보다 먼저). HP 10부터 후반(분노 판 일괄, 재생 없음). 매치는 XP. 처치 승 / Moves 0 패 | |
+| 보스 골렘 HP 30, 갑옷 판 초반 3타 / 후반 5타. 파괴=1HP·+5 XP. 초반 4장 재생성(잔류·낙하보다 먼저). HP 10부터 후반(분노 판 10장 일괄, 재생 없음, 오버킬해도 후반을 줄이지 않음). 매치는 XP. 처치 승 / Moves 0 패 | |
 
 ### 엔진 `src/engine/`
 
@@ -43,7 +43,7 @@
 - resolve: 매치 → 생성 → 발동 → 중력. 범위 안 특수는 Activate. 특수끼리 스왑은 `combo.ts` 레시피. 자동 점화도 직교 인접 특수에 같은 레시피. Bomb+Lightning / Line+Lightning은 번개 타격 칸에서 서브 폭탄·라인 발동. 스텝 상한 80. 갑옷 판은 자리 고정, 보석은 판을 건너 낙하. 초반 판을 깨면 같은 스텝에서 잔류·낙하보다 먼저 다른 칸에 재생성.
 - 업글은 `upgradeStats` 숫자/플래그 + `upgradeRules` 훅. `game` / `resolve` / `specials`에 카드별 `if` 없음.
 - 보스는 `data/bosses.ts` 기믹 목록 + `engine/boss.ts` 적용. `game`에 보스명 `if` 없음. 새 기믹은 def 추가 + `boss.ts` case.
-- 런: Moves 40, 보스 골렘 HP 30 / 갑옷 판 4장(3타, 파괴 1HP +5 XP, 초반 연쇄 중 재생성). HP 10 이하 후반: 남은 목숨만큼 분노 판, 재생 없음. `lateAt`/`bar`는 보스 def. 매치는 XP. 페이즈 `idle` / `levelUp` / `win` / `lose`. 교착 셔플.
+- 런: Moves 40, 보스 골렘 HP 30 / 갑옷 판 4장(3타, 파괴 1HP +5 XP, 초반 연쇄 중 재생성). HP 10 이하 후반: 분노 판 10장(5타) 일괄, 재생 없음. 한 턴 오버킬은 후반 진입(HP 10)에서 멈춤. `lateAt`/`lateHits`/`bar`는 보스 def. 매치는 XP. 페이즈 `idle` / `levelUp` / `win` / `lose`. 교착 셔플.
 - vitest: match, gravity, resolve, specials, combo, game, run, boss, levelUp, upgrades, upgradeRules, upgradeInfo, rng.
 
 ### 보드 / HUD
@@ -76,6 +76,11 @@
 ---
 
 ## 로그
+
+### 2026-09-01 — 후반 판 10장·5타, 오버킬 차단
+
+- 12에서 한 턴에 판을 많이 깨면 초반 판이 연쇄 안에 계속 재생되고, 후반은 남은 HP만큼만 깔렸다.
+- 후반 임계에 닿는 순간 초반 재생을 끊고, HP를 10에 고정한 뒤 분노 판 10장(5타)을 한 번에 깐다.
 
 ### 2026-09-01 — 갑옷 판을 연쇄 안에 재생성
 
