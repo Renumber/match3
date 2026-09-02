@@ -1,4 +1,11 @@
-import { plateLateAt, platesGimmick, type BossDef, type BossGimmick, type PlatesGimmick } from "../data/bosses.ts";
+import {
+  plateLateAt,
+  plateLateHits,
+  platesGimmick,
+  type BossDef,
+  type BossGimmick,
+  type PlatesGimmick,
+} from "../data/bosses.ts";
 import { getTile, makeBlocker, setTile } from "./board.ts";
 import type { GameEvent, ResolveResult } from "./events.ts";
 import { pickInt, type Rng } from "./rng.ts";
@@ -9,6 +16,7 @@ export type BossHitCtx = {
   cleared: number;
   activates?: number;
   blockersCleared?: number;
+  lateAt?: number;
 };
 
 export function placeBossTiles(board: (Tile | null)[][], def: BossDef): void {
@@ -41,6 +49,13 @@ export function platePositions(board: (Tile | null)[][]): Pos[] {
   return cells;
 }
 
+/** True once this resolve has already reached the late threshold. Stop early refill. */
+export function lateRefillLocked(run: RunProgress, brokenThisResolve: number, lateAt: number): boolean {
+  if (run.bossLate) return true;
+  if (lateAt <= 0) return false;
+  return run.bossHp - brokenThisResolve <= lateAt;
+}
+
 export function refillBossTiles(
   board: (Tile | null)[][],
   rng: Rng,
@@ -60,18 +75,17 @@ export function syncBossTiles(
   run: RunProgress,
   def: BossDef,
   destroyed: Pos[] = [],
-): void {
+): GameEvent[] {
   const gimmick = platesGimmick(def);
-  if (!gimmick) return;
-  if (run.bossHp <= 0) return;
+  if (!gimmick) return [];
+  if (run.bossHp <= 0) return [];
   const lateAt = plateLateAt(def);
   if (!run.bossLate && lateAt > 0 && run.bossHp <= lateAt) {
     run.bossLate = true;
-    enterLatePlates(board, rng, gimmick, run.bossHp);
-    return;
+    return enterLatePlates(board, rng, gimmick, lateAt);
   }
-  if (run.bossLate) return;
-  refillPlates(board, rng, gimmick, destroyed);
+  if (run.bossLate) return [];
+  return refillPlates(board, rng, gimmick, destroyed);
 }
 
 export function applyBossHit(run: RunProgress, ctx: BossHitCtx): number {
@@ -87,13 +101,19 @@ export function applyBossHit(run: RunProgress, ctx: BossHitCtx): number {
     }
     applyArmorCrack(run, gimmick, activates, blockersCleared);
   }
-  if (hasPlates) return takeHp(run, plateDamage);
+  if (hasPlates) {
+    const lateAt = ctx.lateAt ?? 0;
+    if (!run.bossLate && lateAt > 0 && run.bossHp - plateDamage < lateAt) {
+      plateDamage = Math.max(0, run.bossHp - lateAt);
+    }
+    return takeHp(run, plateDamage);
+  }
   const soak = run.bossArmorMax > 0 ? run.bossArmor : 0;
   if (ctx.cleared <= 0) return 0;
   return takeHp(run, Math.max(0, ctx.cleared - soak));
 }
 
-export function applyResolveToBoss(run: RunProgress, result: ResolveResult): number {
+export function applyResolveToBoss(run: RunProgress, result: ResolveResult, lateAt = 0): number {
   let activates = 0;
   for (const event of result.events) {
     if (event.type === "activate") activates += 1;
@@ -102,6 +122,7 @@ export function applyResolveToBoss(run: RunProgress, result: ResolveResult): num
     cleared: result.cleared,
     activates,
     blockersCleared: result.blockersCleared,
+    lateAt,
   });
 }
 
@@ -130,16 +151,22 @@ function enterLatePlates(
   rng: Rng,
   gimmick: PlatesGimmick,
   need: number,
-): void {
+): GameEvent[] {
+  const events: GameEvent[] = [];
+  const hits = plateLateHits(gimmick);
   for (const at of platePositions(board)) {
-    const tile = getTile(board, at);
-    setTile(board, at, makeBlocker(tile?.hits ?? gimmick.hits, true));
+    const tile = makeBlocker(hits, true);
+    setTile(board, at, tile);
+    events.push({ type: "spawn", at, special: "none", tile });
   }
   while (platePositions(board).length < need) {
     const at = pickFreeCell(board, rng, []);
-    if (!at) return;
-    setTile(board, at, makeBlocker(gimmick.hits, true));
+    if (!at) return events;
+    const tile = makeBlocker(hits, true);
+    setTile(board, at, tile);
+    events.push({ type: "spawn", at, special: "none", tile });
   }
+  return events;
 }
 
 function pickFreeCell(board: (Tile | null)[][], rng: Rng, avoid: Pos[]): Pos | null {

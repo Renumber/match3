@@ -149,15 +149,14 @@ describe("resolveBoard", () => {
     const leftoverSpawn = result.events.findIndex(
       (e) => e.type === "spawn" && e.special === "bomb" && e.tile.plain,
     );
-    const settleIdx = result.events.findIndex(
-      (e, i) => i > leftoverSpawn && (e.type === "fall" || e.type === "dropIn"),
-    );
+    const settleIdx = result.events.findIndex((e) => e.type === "fall" || e.type === "dropIn");
     const leftoverActivate = result.events.findIndex(
       (e, i) => i > leftoverSpawn && e.type === "activate" && e.special === "bomb",
     );
     expect(leftoverSpawn).toBeGreaterThan(-1);
-    expect(settleIdx).toBeGreaterThan(leftoverSpawn);
-    expect(leftoverActivate).toBeGreaterThan(settleIdx);
+    expect(settleIdx).toBeGreaterThan(-1);
+    expect(leftoverSpawn).toBeGreaterThan(settleIdx);
+    expect(leftoverActivate).toBeGreaterThan(leftoverSpawn);
   });
 
   it("lets a line leave another line on the board", () => {
@@ -185,6 +184,29 @@ describe("resolveBoard", () => {
       ),
     ).toBe(true);
     expect(leftoverPlain(board, "lineH") || leftoverPlain(board, "lineV")).toBe(true);
+    const leftoverAt = leftoverPlainAt(board);
+    expect(leftoverAt?.r).toBe(0);
+  });
+
+  it("keeps leftover lines on the cleared row after gravity", () => {
+    const board = grid([
+      "12340123",
+      "23401234",
+      "00043210",
+      "34012340",
+      "40123401",
+      "01234012",
+      "12340123",
+      "23401234",
+    ]);
+    setTile(board, { r: 2, c: 1 }, makeTile(0, "lineH"));
+    const stats = defaultUpgradeStats();
+    stats.lineEcho = 2;
+    resolveBoard(board, mulberry32(1), { r: 2, c: 2 }, stats);
+    const leftoverAt = leftoverPlainAt(board);
+    expect(leftoverAt).toBeTruthy();
+    expect(leftoverAt?.r).toBe(2);
+    expect(leftoverAt?.r).not.toBe(7);
   });
 
   it("lets lightning leave another lightning on the board", () => {
@@ -409,6 +431,19 @@ describe("resolveBoard", () => {
     expect(bombActivates).toHaveLength(2);
   });
 
+  it("nicks a plate on the next row when a three-match clears", () => {
+    const board = noMatchGrid();
+    setTile(board, { r: 0, c: 0 }, makeTile(0));
+    setTile(board, { r: 0, c: 1 }, makeTile(0));
+    setTile(board, { r: 0, c: 2 }, makeTile(0));
+    setTile(board, { r: 1, c: 1 }, makeBlocker(3));
+    const result = resolveBoard(board, mulberry32(1), { r: 0, c: 1 });
+    expect(getTile(board, { r: 1, c: 1 })?.blocker).toBe(true);
+    expect(getTile(board, { r: 1, c: 1 })?.hits).toBe(2);
+    expect(result.blockersCleared).toBe(0);
+    expect(result.events.some((e) => e.type === "crack")).toBe(true);
+  });
+
   it("chips a multi-hit blocker instead of clearing it", () => {
     const board = noMatchGrid();
     setTile(board, { r: 0, c: 0 }, makeTile(0, "lineH"));
@@ -464,7 +499,10 @@ describe("resolveBoard", () => {
     expect(refilled).toBe(true);
     expect(plateSpawn).toBeGreaterThan(-1);
     expect(leftoverSpawn).toBeGreaterThan(plateSpawn);
-    if (settle >= 0) expect(plateSpawn).toBeLessThan(settle);
+    if (settle >= 0) {
+      expect(plateSpawn).toBeLessThan(settle);
+      expect(leftoverSpawn).toBeGreaterThan(settle);
+    }
     expect(result.blockersCleared).toBe(2);
     expect(getTile(board, refillAt)?.blocker).toBeFalsy();
   });
@@ -518,11 +556,20 @@ function eventsUntilSettle(result: ResolveResult, afterIndex = 0) {
 }
 
 function leftoverPlain(board: (Tile | null)[][], special: Tile["special"]): boolean {
+  return leftoverPlainAt(board, special) !== null;
+}
+
+function leftoverPlainAt(
+  board: (Tile | null)[][],
+  special?: Tile["special"],
+): { r: number; c: number } | null {
   for (let r = 0; r < ROWS; r++) {
     for (let c = 0; c < COLS; c++) {
       const tile = getTile(board, { r, c });
-      if (tile && tile.special === special && tile.plain) return true;
+      if (!tile?.plain || tile.special === "none") continue;
+      if (special && tile.special !== special) continue;
+      return { r, c };
     }
   }
-  return false;
+  return null;
 }

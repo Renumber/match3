@@ -168,7 +168,23 @@ describe("Game boss", () => {
     expect(game.bossArmor).toBe(armor);
   });
 
-  it("opens late phase with remaining life as enraged plates", () => {
+  it("chips a plate beside a three-match", () => {
+    const game = new Game(1);
+    game.board = noMatchGrid();
+    placeBossTiles(game.board, STAGE1_BOSS);
+    setTile(game.board, { r: 2, c: 2 }, makeTile(0));
+    setTile(game.board, { r: 2, c: 3 }, makeTile(0));
+    setTile(game.board, { r: 2, c: 4 }, makeTile(1));
+    setTile(game.board, { r: 2, c: 5 }, makeTile(0));
+    const hits = getTile(game.board, { r: 3, c: 3 })?.hits;
+    const hp = game.bossHp;
+    game.trySwap({ r: 2, c: 4 }, { r: 2, c: 5 });
+    expect(game.bossHp).toBe(hp);
+    expect(game.lastDamage).toBe(0);
+    expect(getTile(game.board, { r: 3, c: 3 })?.hits).toBe((hits ?? 3) - 1);
+  });
+
+  it("opens late phase with lateAt enraged plates", () => {
     const game = new Game(1);
     game.board = noMatchGrid();
     placeBossTiles(game.board, STAGE1_BOSS);
@@ -184,7 +200,38 @@ describe("Game boss", () => {
     expect(game.bossLate).toBe(true);
     const plates = plateCells(game.board);
     expect(plates).toHaveLength(10);
-    expect(plates.every((at) => getTile(game.board, at)?.enraged)).toBe(true);
+    expect(plates.every((at) => {
+      const tile = getTile(game.board, at);
+      return tile?.enraged && tile.hits === 5;
+    })).toBe(true);
+  });
+
+  it("does not refill early plates when a burst overshoots into late", () => {
+    const game = new Game(1);
+    game.board = noMatchGrid();
+    placeBossTiles(game.board, STAGE1_BOSS);
+    game.run.bossHp = 12;
+    for (const at of plateCells(game.board)) {
+      const tile = getTile(game.board, at);
+      if (tile) tile.hits = 1;
+    }
+    setTile(game.board, { r: 2, c: 2 }, makeTile(0, "bomb"));
+    setTile(game.board, { r: 2, c: 3 }, makeTile(1, "bomb"));
+    const out = game.trySwap({ r: 2, c: 2 }, { r: 2, c: 3 });
+    expect(out.result?.blockersCleared).toBeGreaterThanOrEqual(2);
+    expect(game.bossHp).toBe(10);
+    expect(game.bossLate).toBe(true);
+    expect(game.lastDamage).toBe(2);
+    const earlySpawn = (out.result?.events ?? []).some(
+      (event) => event.type === "spawn" && event.tile.blocker && !event.tile.enraged,
+    );
+    expect(earlySpawn).toBe(false);
+    const plates = plateCells(game.board);
+    expect(plates).toHaveLength(10);
+    expect(plates.every((at) => {
+      const tile = getTile(game.board, at);
+      return tile?.enraged && tile.hits === 5;
+    })).toBe(true);
   });
 
   it("wins when the boss dies, even on the last move", () => {

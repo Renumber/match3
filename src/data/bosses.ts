@@ -16,6 +16,8 @@ export type PlatesGimmick = {
   type: "plates";
   cells: Pos[];
   hits: number;
+  /** Hits per plate in late phase. Omit = same as `hits`. */
+  lateHits?: number;
   damage: number;
 };
 
@@ -50,7 +52,7 @@ export const GOLEM: BossDef = {
   lateAt: 10,
   bar: { early: "#fbbf24", late: "#e11d48" },
   gimmicks: [
-    { type: "plates", cells: GOLEM_PLATES, hits: 3, damage: 1 },
+    { type: "plates", cells: GOLEM_PLATES, hits: 3, lateHits: 5, damage: 1 },
   ],
 };
 
@@ -66,6 +68,10 @@ export function platesGimmick(def: BossDef): PlatesGimmick | undefined {
 
 export function plateLateAt(def: BossDef): number {
   return def.lateAt ?? 0;
+}
+
+export function plateLateHits(gimmick: PlatesGimmick): number {
+  return gimmick.lateHits ?? gimmick.hits;
 }
 
 export function armorStart(def: BossDef): number {

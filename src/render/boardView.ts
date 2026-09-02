@@ -376,7 +376,8 @@ export function mountBoard(app: Application, game: Game, hud: HudHooks): BoardVi
 function drawTile(g: Graphics, tile: Tile | null, size: number, selected: boolean): void {
   g.clear();
   if (tile?.enraged) {
-    g.roundRect(0, 0, size, size, 10).fill(0x9f1239);
+    const hits = tile.hits ?? 1;
+    g.roundRect(0, 0, size, size, 10).fill(hits <= 2 ? 0x7f1d1d : 0x9f1239);
     const cx = size / 2;
     const cy = size / 2;
     const s = size * 0.28;
@@ -386,6 +387,21 @@ function drawTile(g: Graphics, tile: Tile | null, size: number, selected: boolea
     g.lineTo(cx - s, cy);
     g.closePath();
     g.fill(0xfb7185);
+    if (hits <= 3) {
+      g.moveTo(size * 0.22, size * 0.28);
+      g.lineTo(size * 0.78, size * 0.72);
+      g.stroke({ width: 2, color: 0xfecdd3 });
+    }
+    if (hits <= 2) {
+      g.moveTo(size * 0.78, size * 0.28);
+      g.lineTo(size * 0.22, size * 0.72);
+      g.stroke({ width: 2, color: 0xfecdd3 });
+    }
+    if (hits <= 1) {
+      g.moveTo(size * 0.18, size * 0.5);
+      g.lineTo(size * 0.82, size * 0.5);
+      g.stroke({ width: 2, color: 0xfecdd3 });
+    }
     if (selected) {
       g.roundRect(2, 2, size - 4, size - 4, 8).stroke({ width: 3, color: 0xffffff });
     }

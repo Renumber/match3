@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { emptyBoard, makeTile, resetTileIds, setTile } from "./board.ts";
+import { emptyBoard, makeBlocker, makeTile, resetTileIds, setTile } from "./board.ts";
 import { mulberry32 } from "./rng.ts";
 import { cellsForSpecial, specialFromThreeMatch } from "./specials.ts";
 import { pickSquareCorners, squareCorners } from "./specialShape.ts";
@@ -41,6 +41,23 @@ describe("cellsForSpecial upgrades", () => {
       stats,
     );
     expect(cells).toHaveLength(4);
+  });
+
+  it("aims lightning at specials first, not plates", () => {
+    resetTileIds();
+    const board = emptyBoard();
+    for (let r = 0; r < 8; r++) {
+      for (let c = 0; c < 8; c++) {
+        setTile(board, { r, c }, makeTile(0));
+      }
+    }
+    setTile(board, { r: 5, c: 5 }, makeBlocker(3));
+    setTile(board, { r: 1, c: 6 }, makeTile(1, "bomb"));
+    const cells = cellsForSpecial("lightning", { r: 0, c: 0 }, board, mulberry32(1), {
+      ...defaultUpgradeStats(),
+      lightningTargets: 1,
+    });
+    expect(cells).toEqual([{ r: 1, c: 6 }]);
   });
 
   it("adds a perpendicular line", () => {
