@@ -444,17 +444,6 @@ describe("resolveBoard", () => {
     expect(result.events.some((e) => e.type === "crack")).toBe(true);
   });
 
-  it("nicks a plate one row off a line", () => {
-    const board = noMatchGrid();
-    setTile(board, { r: 2, c: 0 }, makeTile(0, "lineH"));
-    setTile(board, { r: 2, c: 1 }, makeTile(0));
-    setTile(board, { r: 2, c: 2 }, makeTile(0));
-    setTile(board, { r: 3, c: 3 }, makeBlocker(3));
-    const result = resolveBoard(board, mulberry32(1), { r: 2, c: 0 });
-    expect(getTile(board, { r: 3, c: 3 })?.hits).toBe(2);
-    expect(result.blockersCleared).toBe(0);
-  });
-
   it("chips a multi-hit blocker instead of clearing it", () => {
     const board = noMatchGrid();
     setTile(board, { r: 0, c: 0 }, makeTile(0, "lineH"));

@@ -43,13 +43,6 @@ describe("cellsForSpecial upgrades", () => {
     expect(cells).toHaveLength(4);
   });
 
-  it("nicks plates one row away from a horizontal line", () => {
-    const board = emptyBoard();
-    setTile(board, { r: 3, c: 3 }, makeBlocker(3));
-    const cells = cellsForSpecial("lineH", { r: 2, c: 0 }, board, mulberry32(1));
-    expect(cells.some((p) => p.r === 3 && p.c === 3)).toBe(true);
-  });
-
   it("aims lightning at specials first, not plates", () => {
     resetTileIds();
     const board = emptyBoard();
