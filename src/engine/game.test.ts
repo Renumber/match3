@@ -168,6 +168,22 @@ describe("Game boss", () => {
     expect(game.bossArmor).toBe(armor);
   });
 
+  it("chips a plate beside a three-match", () => {
+    const game = new Game(1);
+    game.board = noMatchGrid();
+    placeBossTiles(game.board, STAGE1_BOSS);
+    setTile(game.board, { r: 2, c: 2 }, makeTile(0));
+    setTile(game.board, { r: 2, c: 3 }, makeTile(0));
+    setTile(game.board, { r: 2, c: 4 }, makeTile(1));
+    setTile(game.board, { r: 2, c: 5 }, makeTile(0));
+    const hits = getTile(game.board, { r: 3, c: 3 })?.hits;
+    const hp = game.bossHp;
+    game.trySwap({ r: 2, c: 4 }, { r: 2, c: 5 });
+    expect(game.bossHp).toBe(hp);
+    expect(game.lastDamage).toBe(0);
+    expect(getTile(game.board, { r: 3, c: 3 })?.hits).toBe((hits ?? 3) - 1);
+  });
+
   it("opens late phase with lateAt enraged plates", () => {
     const game = new Game(1);
     game.board = noMatchGrid();

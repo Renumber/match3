@@ -26,7 +26,7 @@ export type SwapPair = {
   b: Pos;
 };
 
-/** Called after a clear that destroyed blockers, before leftover spawn / gravity. */
+/** Called after a clear that destroyed blockers, before leftover spawn. */
 export type AfterClearHook = (
   board: (Tile | null)[][],
   rng: Rng,
@@ -141,17 +141,58 @@ function activateSpecials(
 function plantEchoes(
   board: (Tile | null)[][],
   pending: EchoJob[],
+  overwrite = false,
 ): { events: GameEvent[]; ids: Set<number> } {
   const events: GameEvent[] = [];
   const ids = new Set<number>();
   for (const echo of pending) {
-    if (!inBounds(echo.at) || getTile(board, echo.at)) continue;
+    if (!inBounds(echo.at)) continue;
+    const existing = getTile(board, echo.at);
+    if (existing?.blocker) continue;
+    if (existing && existing.special !== "none") continue;
+    if (existing && !overwrite) continue;
     const tile = makeTile(echo.color, echo.special, true, echo.echoDepth);
     setTile(board, echo.at, tile);
     events.push({ type: "spawn", at: echo.at, special: echo.special, tile });
     ids.add(tile.id);
   }
   return { events, ids };
+}
+
+/** Settle first so leftovers sit on the cleared row/col instead of falling to the bottom. */
+function settleThenPlantEchoes(
+  board: (Tile | null)[][],
+  rng: Rng,
+  pending: EchoJob[],
+): { events: GameEvent[]; ids: Set<number> } {
+  const events = [...settleEvents(board, rng)];
+  const planted = plantEchoes(board, pending, true);
+  events.push(...planted.events);
+  return { events, ids: planted.ids };
+}
+
+function grazeAdjacentBlockers(
+  board: (Tile | null)[][],
+  cell: Pos,
+  clearSet: Set<string>,
+  toClear: Pos[],
+  grazed: Set<string>,
+  extraEvents?: GameEvent[],
+): void {
+  const neighbors = [
+    { r: cell.r - 1, c: cell.c },
+    { r: cell.r + 1, c: cell.c },
+    { r: cell.r, c: cell.c - 1 },
+    { r: cell.r, c: cell.c + 1 },
+  ];
+  for (const at of neighbors) {
+    if (!inBounds(at)) continue;
+    const key = posKey(at);
+    if (grazed.has(key)) continue;
+    if (!getTile(board, at)?.blocker) continue;
+    grazed.add(key);
+    addCell(board, clearSet, toClear, at, extraEvents);
+  }
 }
 
 function jobsForTileIds(board: (Tile | null)[][], ids: Set<number>): ActivateJob[] {
@@ -381,9 +422,8 @@ export function resolveBoard(
     }
     events.push(...eventsAfterClear(board, rng, comboDestroyed, afterClear));
     if (first.echoes.length) {
-      const planted = plantEchoes(board, first.echoes);
+      const planted = settleThenPlantEchoes(board, rng, first.echoes);
       events.push(...planted.events);
-      events.push(...settleEvents(board, rng));
       if (shouldAutoDetonate(stats) && planted.ids.size) {
         const echoJobs = autoDetonateJobs(
           board,
@@ -448,9 +488,18 @@ export function resolveBoard(
       }
     }
 
+    const grazeEvents: GameEvent[] = [];
+    const grazed = new Set<string>();
+    for (const match of matches) {
+      for (const cell of match.cells) {
+        grazeAdjacentBlockers(board, cell, clearSet, toClear, grazed, grazeEvents);
+      }
+    }
+
     const first = activateSpecials(board, rng, activateQueue, clearSet, toClear, stats);
     events.push({ type: "highlight", cells: [...toClear] });
     events.push(...first.fxEvents);
+    events.push(...grazeEvents);
 
     const matchDestroyed = blockerCells(board, toClear);
     blockersCleared += matchDestroyed.length;
@@ -497,11 +546,8 @@ export function resolveBoard(
     if (echoes.length) {
       let pending = echoes;
       for (let wave = 0; wave < MAX_ECHO_WAVES && pending.length; wave++) {
-        const planted = plantEchoes(board, pending);
+        const planted = settleThenPlantEchoes(board, rng, pending);
         events.push(...planted.events);
-        const settled = settleBoard(board, rng);
-        if (settled.falls.length) events.push({ type: "fall", moves: settled.falls });
-        if (settled.drops.length) events.push({ type: "dropIn", drops: settled.drops });
         pending = [];
         if (!shouldAutoDetonate(stats) || !planted.ids.size) break;
         const echoJobs = autoDetonateJobs(
@@ -518,10 +564,8 @@ export function resolveBoard(
         events.push(...extra.events);
         cleared += extra.cleared;
         blockersCleared += extra.blockers;
-        const refill = settleBoard(board, rng);
-        if (refill.falls.length) events.push({ type: "fall", moves: refill.falls });
-        if (refill.drops.length) events.push({ type: "dropIn", drops: refill.drops });
         pending = boom.echoes;
+        if (!pending.length) events.push(...settleEvents(board, rng));
       }
     } else {
       const { falls, drops } = settleBoard(board, rng);

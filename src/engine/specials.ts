@@ -1,4 +1,5 @@
-import type { Pos, Special, Tile } from "./types.ts";
+import { inBounds, posKey, type Pos, type Special, type Tile } from "./types.ts";
+import { getTile } from "./board.ts";
 import type { GameEvent } from "./events.ts";
 import type { Rng } from "./rng.ts";
 import { extraSpecialCells, extraSpecialFx } from "./upgradeRules.ts";
@@ -39,7 +40,39 @@ export function cellsForSpecial(
   stats: UpgradeStats = defaultUpgradeStats(),
 ): Pos[] {
   const ctx = { special, origin, board, rng, stats };
-  return uniquePos([...baseSpecialCells(special, origin, board, rng, stats), ...extraSpecialCells(ctx)]);
+  const cells = uniquePos([
+    ...baseSpecialCells(special, origin, board, rng, stats),
+    ...extraSpecialCells(ctx),
+  ]);
+  return uniquePos([...cells, ...grazeLineBlockers(board, special, cells)]);
+}
+
+/** Horizontal lines nick plates one row away; vertical lines nick plates one col away. */
+function grazeLineBlockers(board: (Tile | null)[][], special: Special, cells: Pos[]): Pos[] {
+  if (special !== "lineH" && special !== "lineV") return [];
+  const extra: Pos[] = [];
+  const seen = new Set<string>();
+  for (const cell of cells) {
+    const neighbors =
+      special === "lineH"
+        ? [
+            { r: cell.r - 1, c: cell.c },
+            { r: cell.r + 1, c: cell.c },
+          ]
+        : [
+            { r: cell.r, c: cell.c - 1 },
+            { r: cell.r, c: cell.c + 1 },
+          ];
+    for (const at of neighbors) {
+      if (!inBounds(at)) continue;
+      const key = posKey(at);
+      if (seen.has(key)) continue;
+      if (!getTile(board, at)?.blocker) continue;
+      seen.add(key);
+      extra.push(at);
+    }
+  }
+  return extra;
 }
 
 export function specialActivateFx(
