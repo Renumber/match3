@@ -153,8 +153,8 @@ export function mountBoard(app: Application, game: Game, hud: HudHooks): BoardVi
         B.g.x = bx - dx * p;
         B.g.y = by - dy * p;
         const moving = t > 0.22 && t < 0.82;
-        const stretch = moving ? 1.18 : 1;
-        const squash = moving ? 0.86 : 1;
+        const stretch = moving ? 1.34 : 1;
+        const squash = moving ? 0.76 : 1;
         const sx = horizontal ? stretch : squash;
         const sy = horizontal ? squash : stretch;
         A.g.scale.set(sx, sy);
@@ -172,11 +172,11 @@ export function mountBoard(app: Application, game: Game, hud: HudHooks): BoardVi
     if (nodes.length === 0) return;
     await animate(
       app,
-      90,
+      140,
       (t) => {
         const s = Math.sin(Math.min(1, t) * Math.PI);
-        const sx = 1 + 0.2 * s;
-        const sy = 1 - 0.26 * s;
+        const sx = 1 + 0.36 * s;
+        const sy = 1 - 0.42 * s;
         for (const g of nodes) g.scale.set(sx, sy);
       },
       linear,
@@ -189,11 +189,12 @@ export function mountBoard(app: Application, game: Game, hud: HudHooks): BoardVi
     const baseY = root.y;
     await animate(
       app,
-      160,
+      220,
       (t) => {
-        const mag = amount * (1 - t);
-        root.x = baseX + Math.sin(t * 42) * mag;
-        root.y = baseY + Math.cos(t * 36) * mag * 0.65;
+        const decay = 1 - t;
+        const kick = Math.sin(t * Math.PI * 3) * decay;
+        root.x = baseX + kick * amount;
+        root.y = baseY + Math.sin(t * Math.PI * 2) * decay * amount * 0.55;
       },
       linear,
     );
@@ -236,7 +237,7 @@ export function mountBoard(app: Application, game: Game, hud: HudHooks): BoardVi
               const up = t < 0.45;
               const u = up ? t / 0.45 : (t - 0.45) / 0.55;
               const punch = up ? easeOutBack(u) : 1 - easeOutCubic(u) * 0.45;
-              const s = 1 + 0.36 * Math.max(0, punch);
+              const s = 1 + 0.55 * Math.max(0, punch);
               for (const item of items) item.g.scale.set(s);
               flash.clear();
               const alpha = (up ? 0.72 * Math.min(1, u * 1.4) : 0.72 * (1 - u)) * 0.85;
@@ -248,7 +249,7 @@ export function mountBoard(app: Application, game: Game, hud: HudHooks): BoardVi
             },
             linear,
           );
-          for (const item of items) item.g.scale.set(1.1);
+          for (const item of items) item.g.scale.set(1.16);
           flash.destroy();
           break;
         }
@@ -281,10 +282,10 @@ export function mountBoard(app: Application, game: Game, hud: HudHooks): BoardVi
             drawTile(item.g, item.tile, cellSize, false);
             await animate(
               app,
-              100,
+              120,
               (t) => {
                 const s = Math.sin(t * Math.PI);
-                item.g.scale.set(1 + 0.18 * s, 1 - 0.14 * s);
+                item.g.scale.set(1 + 0.28 * s, 1 - 0.22 * s);
               },
               linear,
             );
@@ -309,27 +310,27 @@ export function mountBoard(app: Application, game: Game, hud: HudHooks): BoardVi
           await Promise.all([
             animate(
               app,
-              180,
+              220,
               (t) => {
                 for (let n = 0; n < items.length; n++) {
                   const item = items[n];
                   if (!item) continue;
                   const base = origins[n] ?? 1;
-                  if (t < 0.34) {
-                    const u = easeOutCubic(t / 0.34);
-                    item.g.scale.set(base + (1.5 - base) * u);
+                  if (t < 0.32) {
+                    const u = easeOutCubic(t / 0.32);
+                    item.g.scale.set(base + (1.78 - base) * u);
                     item.g.alpha = 1;
                   } else {
-                    const u = easeInQuad((t - 0.34) / 0.66);
-                    item.g.scale.set(Math.max(0.05, 1.5 * (1 - u)));
+                    const u = easeInQuad((t - 0.32) / 0.68);
+                    item.g.scale.set(Math.max(0.05, 1.78 * (1 - u)));
                     item.g.alpha = 1 - u;
                   }
                 }
               },
               linear,
             ),
-            playClearBurst(app, fxLayer, points, cellSize * (1 + Math.min(0.35, (chain - 1) * 0.1))),
-            shake(Math.min(6, 1.6 + items.length * 0.28 + chain * 0.35)),
+            playClearBurst(app, fxLayer, points, cellSize * (1 + Math.min(0.45, (chain - 1) * 0.12))),
+            shake(Math.min(12, 5 + items.length * 0.4 + chain * 0.7)),
           ]);
           for (const cell of event.cells) {
             const item = occupancy.get(posKey(cell));

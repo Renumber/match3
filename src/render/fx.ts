@@ -156,33 +156,33 @@ export async function playClearBurst(
         x: point.x,
         y: point.y,
         ang,
-        dist: cell * (0.62 + ((i * 3 + index) % 5) * 0.1),
-        size: cell * (0.09 + (i % 3) * 0.03),
+        dist: cell * (0.85 + ((i * 3 + index) % 5) * 0.12),
+        size: cell * (0.2 + (i % 3) * 0.04),
         color: i % 3 === 0 ? 0xffffff : point.color,
       };
     });
   });
   const cx = points.reduce((sum, point) => sum + point.x, 0) / points.length;
   const cy = points.reduce((sum, point) => sum + point.y, 0) / points.length;
-  const maxR = cell * (1.05 + Math.min(1.5, points.length * 0.14));
+  const maxR = cell * (1.35 + Math.min(1.8, points.length * 0.16));
   await animate(
     app,
-    200,
+    260,
     (t) => {
       fx.clear();
       const fade = 1 - t;
       const ring = maxR * (0.15 + 0.85 * easeOutCubic(t));
       fx.circle(cx, cy, Math.max(1, ring)).stroke({
-        width: Math.max(1.5, 6 * fade),
+        width: Math.max(2, cell * 0.12 * fade),
         color: 0xffffff,
-        alpha: 0.9 * fade,
+        alpha: 0.95 * fade,
       });
       for (const shard of shards) {
         const d = shard.dist * easeOutCubic(t);
         const x = shard.x + Math.cos(shard.ang) * d;
-        const y = shard.y + Math.sin(shard.ang) * d + cell * 0.18 * t * t;
-        const w = shard.size * (1 - t * 0.25);
-        fx.roundRect(x - w / 2, y - w / 2, w, w, 2).fill({ color: shard.color, alpha: fade });
+        const y = shard.y + Math.sin(shard.ang) * d + cell * 0.22 * t * t;
+        const w = shard.size * (1 - t * 0.2);
+        fx.circle(x, y, Math.max(1.5, w / 2)).fill({ color: shard.color, alpha: fade });
       }
     },
     linear,
