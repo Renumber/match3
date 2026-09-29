@@ -1,3 +1,5 @@
+import { BUILD_LABEL } from "../version.ts";
+
 export type BossHud = {
   name: string;
   current: number;
@@ -44,6 +46,9 @@ function ensureTicks(root: HTMLElement, max: number, lateAt: number): void {
 }
 
 export function mountHud(): Hud {
+  const versionEl = document.querySelector("#build-version");
+  if (versionEl) versionEl.textContent = BUILD_LABEL;
+
   const chainEl = mustEl<HTMLElement>("#chain");
   const clearedEl = mustEl<HTMLElement>("#cleared");
   const movesEl = mustEl("#moves");
