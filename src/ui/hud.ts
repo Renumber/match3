@@ -9,13 +9,19 @@ export type BossHud = {
 };
 
 export type Hud = {
-  setChain: (value: number) => void;
-  setCleared: (value: number) => void;
+  setChain: (value: number, punch?: boolean) => void;
+  setCleared: (value: number, punch?: boolean) => void;
   setMoves: (value: number) => void;
   setLevel: (value: number) => void;
   setXp: (current: number, next: number) => void;
   setBoss: (info: BossHud) => void;
 };
+
+function punch(el: HTMLElement): void {
+  el.classList.remove("pop");
+  void el.offsetWidth;
+  el.classList.add("pop");
+}
 
 function mustEl<T extends Element>(selector: string): T {
   const el = document.querySelector(selector);
@@ -38,8 +44,8 @@ function ensureTicks(root: HTMLElement, max: number, lateAt: number): void {
 }
 
 export function mountHud(): Hud {
-  const chainEl = mustEl("#chain");
-  const clearedEl = mustEl("#cleared");
+  const chainEl = mustEl<HTMLElement>("#chain");
+  const clearedEl = mustEl<HTMLElement>("#cleared");
   const movesEl = mustEl("#moves");
   const levelEl = mustEl("#level");
   const xpLabel = mustEl("#xp-label");
@@ -52,11 +58,13 @@ export function mountHud(): Hud {
   const bossTicksEl = mustEl<HTMLElement>("#boss-ticks");
 
   return {
-    setChain: (value) => {
+    setChain: (value, punchNumber = false) => {
       chainEl.textContent = String(value);
+      if (punchNumber && value > 0) punch(chainEl);
     },
-    setCleared: (value) => {
+    setCleared: (value, punchNumber = false) => {
       clearedEl.textContent = String(value);
+      if (punchNumber && value > 0) punch(clearedEl);
     },
     setMoves: (value) => {
       movesEl.textContent = String(value);
