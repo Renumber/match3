@@ -2,15 +2,15 @@ import { Application, Container, Graphics, Rectangle, type FederatedPointerEvent
 import { COLS, ROWS, inBounds, posKey, type Pos, type Tile } from "../engine/types.ts";
 import type { GameEvent } from "../engine/events.ts";
 import { Game } from "../engine/game.ts";
-import { playBombFx, playLineFx, playStrikeFx, type Layout } from "./fx.ts";
-import { animate, easeOutBack } from "./tween.ts";
+import { playBombFx, playClearBurst, playLineFx, playStrikeFx, type Layout } from "./fx.ts";
+import { animate, easeInQuad, easeOutBack, easeOutCubic, linear, swapTravel } from "./tween.ts";
 
 const PALETTE = [0xef4444, 0x3b82f6, 0x22c55e, 0xeab308, 0xa855f7];
 const GAP = 6;
 
 export type HudHooks = {
-  setChain: (value: number) => void;
-  setCleared: (value: number) => void;
+  setChain: (value: number, punch?: boolean) => void;
+  setCleared: (value: number, punch?: boolean) => void;
   setBossHp?: (current: number, max: number) => void;
   onResolved?: () => void;
 };
@@ -124,22 +124,82 @@ export function mountBoard(app: Application, game: Game, hud: HudHooks): BoardVi
     return inBounds(pos) ? pos : null;
   };
 
+  const lift = (g: Graphics) => {
+    if (g.parent) g.parent.addChild(g);
+  };
+
   const animSwap = async (a: Pos, b: Pos) => {
     const A = occupancy.get(posKey(a));
     const B = occupancy.get(posKey(b));
     if (!A || !B) return;
     occupancy.set(posKey(a), B);
     occupancy.set(posKey(b), A);
+    lift(A.g);
+    lift(B.g);
     const ax = A.g.x;
     const ay = A.g.y;
     const bx = B.g.x;
     const by = B.g.y;
-    await animate(app, 120, (t) => {
-      A.g.x = ax + (bx - ax) * t;
-      A.g.y = ay + (by - ay) * t;
-      B.g.x = bx + (ax - bx) * t;
-      B.g.y = by + (ay - by) * t;
-    });
+    const dx = bx - ax;
+    const dy = by - ay;
+    const horizontal = Math.abs(dx) >= Math.abs(dy);
+    await animate(
+      app,
+      170,
+      (t) => {
+        const p = swapTravel(t);
+        A.g.x = ax + dx * p;
+        A.g.y = ay + dy * p;
+        B.g.x = bx - dx * p;
+        B.g.y = by - dy * p;
+        const moving = t > 0.22 && t < 0.82;
+        const stretch = moving ? 1.34 : 1;
+        const squash = moving ? 0.76 : 1;
+        const sx = horizontal ? stretch : squash;
+        const sy = horizontal ? squash : stretch;
+        A.g.scale.set(sx, sy);
+        B.g.scale.set(sx, sy);
+      },
+      linear,
+    );
+    A.g.position.set(bx, by);
+    B.g.position.set(ax, ay);
+    A.g.scale.set(1);
+    B.g.scale.set(1);
+  };
+
+  const land = async (nodes: Graphics[]) => {
+    if (nodes.length === 0) return;
+    await animate(
+      app,
+      140,
+      (t) => {
+        const s = Math.sin(Math.min(1, t) * Math.PI);
+        const sx = 1 + 0.36 * s;
+        const sy = 1 - 0.42 * s;
+        for (const g of nodes) g.scale.set(sx, sy);
+      },
+      linear,
+    );
+    for (const g of nodes) g.scale.set(1);
+  };
+
+  const shake = async (amount: number) => {
+    const baseX = root.x;
+    const baseY = root.y;
+    await animate(
+      app,
+      220,
+      (t) => {
+        const decay = 1 - t;
+        const kick = Math.sin(t * Math.PI * 3) * decay;
+        root.x = baseX + kick * amount;
+        root.y = baseY + Math.sin(t * Math.PI * 2) * decay * amount * 0.55;
+      },
+      linear,
+    );
+    root.x = baseX;
+    root.y = baseY;
   };
 
   const playEvents = async (events: GameEvent[], clearedTotal: number) => {
@@ -147,6 +207,7 @@ export function mountBoard(app: Application, game: Game, hud: HudHooks): BoardVi
     let shownHp = game.bossHp + game.lastDamage;
     hud.setCleared(shownCleared);
     hud.setBossHp?.(shownHp, game.bossMaxHp);
+    let chain = 1;
     let i = 0;
     while (i < events.length) {
       const event = events[i];
@@ -160,17 +221,36 @@ export function mountBoard(app: Application, game: Game, hud: HudHooks): BoardVi
           await animSwap(event.a, event.b);
           break;
         case "chain":
-          hud.setChain(event.value);
+          chain = event.value;
+          hud.setChain(event.value, true);
           break;
         case "highlight": {
           const items = event.cells
             .map((p) => occupancy.get(posKey(p)))
             .filter((item): item is Occupant => Boolean(item));
-          await animate(app, 110, (t) => {
-            const s = 1 + 0.1 * Math.sin(t * Math.PI);
-            for (const item of items) item.g.scale.set(s);
-          });
-          for (const item of items) item.g.scale.set(1);
+          const flash = new Graphics();
+          fxLayer.addChild(flash);
+          await animate(
+            app,
+            130,
+            (t) => {
+              const up = t < 0.45;
+              const u = up ? t / 0.45 : (t - 0.45) / 0.55;
+              const punch = up ? easeOutBack(u) : 1 - easeOutCubic(u) * 0.45;
+              const s = 1 + 0.55 * Math.max(0, punch);
+              for (const item of items) item.g.scale.set(s);
+              flash.clear();
+              const alpha = (up ? 0.72 * Math.min(1, u * 1.4) : 0.72 * (1 - u)) * 0.85;
+              for (const item of items) {
+                flash
+                  .roundRect(item.g.x - cellSize / 2, item.g.y - cellSize / 2, cellSize, cellSize, 10)
+                  .fill({ color: 0xffffff, alpha });
+              }
+            },
+            linear,
+          );
+          for (const item of items) item.g.scale.set(1.16);
+          flash.destroy();
           break;
         }
         case "fxLine":
@@ -200,10 +280,15 @@ export function mountBoard(app: Application, game: Game, hud: HudHooks): BoardVi
           if (item) {
             item.tile.hits = event.hits;
             drawTile(item.g, item.tile, cellSize, false);
-            await animate(app, 90, (t) => {
-              const s = 1 + 0.08 * Math.sin(t * Math.PI);
-              item.g.scale.set(s);
-            });
+            await animate(
+              app,
+              120,
+              (t) => {
+                const s = Math.sin(t * Math.PI);
+                item.g.scale.set(1 + 0.28 * s, 1 - 0.22 * s);
+              },
+              linear,
+            );
             item.g.scale.set(1);
           }
           break;
@@ -216,12 +301,37 @@ export function mountBoard(app: Application, game: Game, hud: HudHooks): BoardVi
           const items = event.cells
             .map((p) => occupancy.get(posKey(p)))
             .filter((item): item is Occupant => Boolean(item));
-          await animate(app, 140, (t) => {
-            for (const item of items) {
-              item.g.scale.set(1 - t);
-              item.g.alpha = 1 - t;
-            }
-          });
+          const origins = items.map((item) => item.g.scale.x || 1);
+          const points = items.map((item) => ({
+            x: item.g.x,
+            y: item.g.y,
+            color: burstColor(item.tile),
+          }));
+          await Promise.all([
+            animate(
+              app,
+              220,
+              (t) => {
+                for (let n = 0; n < items.length; n++) {
+                  const item = items[n];
+                  if (!item) continue;
+                  const base = origins[n] ?? 1;
+                  if (t < 0.32) {
+                    const u = easeOutCubic(t / 0.32);
+                    item.g.scale.set(base + (1.78 - base) * u);
+                    item.g.alpha = 1;
+                  } else {
+                    const u = easeInQuad((t - 0.32) / 0.68);
+                    item.g.scale.set(Math.max(0.05, 1.78 * (1 - u)));
+                    item.g.alpha = 1 - u;
+                  }
+                }
+              },
+              linear,
+            ),
+            playClearBurst(app, fxLayer, points, cellSize * (1 + Math.min(0.45, (chain - 1) * 0.12))),
+            shake(Math.min(12, 5 + items.length * 0.4 + chain * 0.7)),
+          ]);
           for (const cell of event.cells) {
             const item = occupancy.get(posKey(cell));
             if (!item) continue;
@@ -229,7 +339,7 @@ export function mountBoard(app: Application, game: Game, hud: HudHooks): BoardVi
             item.g.destroy();
           }
           shownCleared += event.cells.length;
-          hud.setCleared(shownCleared);
+          hud.setCleared(shownCleared, true);
           break;
         }
         case "spawn": {
@@ -259,17 +369,23 @@ export function mountBoard(app: Application, game: Game, hud: HudHooks): BoardVi
           for (const job of jobs) {
             if (job.item) occupancy.set(posKey(job.to), job.item);
           }
-          await animate(app, 200, (t) => {
-            for (const job of jobs) {
-              if (!job.item) continue;
-              const x0 = job.from.c * (cellSize + GAP) + cellSize / 2;
-              const y0 = job.from.r * (cellSize + GAP) + cellSize / 2;
-              const x1 = job.to.c * (cellSize + GAP) + cellSize / 2;
-              const y1 = job.to.r * (cellSize + GAP) + cellSize / 2;
-              job.item.g.x = x0 + (x1 - x0) * t;
-              job.item.g.y = y0 + (y1 - y0) * t;
-            }
-          });
+          await animate(
+            app,
+            170,
+            (t) => {
+              for (const job of jobs) {
+                if (!job.item) continue;
+                const x0 = job.from.c * (cellSize + GAP) + cellSize / 2;
+                const y0 = job.from.r * (cellSize + GAP) + cellSize / 2;
+                const x1 = job.to.c * (cellSize + GAP) + cellSize / 2;
+                const y1 = job.to.r * (cellSize + GAP) + cellSize / 2;
+                job.item.g.x = x0 + (x1 - x0) * t;
+                job.item.g.y = y0 + (y1 - y0) * t;
+              }
+            },
+            easeInQuad,
+          );
+          await land(jobs.flatMap((job) => (job.item ? [job.item.g] : [])));
           break;
         }
         case "dropIn": {
@@ -285,11 +401,17 @@ export function mountBoard(app: Application, game: Game, hud: HudHooks): BoardVi
               y1: drop.to.r * (cellSize + GAP) + cellSize / 2,
             };
           });
-          await animate(app, 220, (t) => {
-            for (const job of jobs) {
-              job.g.y = job.y0 + (job.y1 - job.y0) * t;
-            }
-          });
+          await animate(
+            app,
+            180,
+            (t) => {
+              for (const job of jobs) {
+                job.g.y = job.y0 + (job.y1 - job.y0) * t;
+              }
+            },
+            easeInQuad,
+          );
+          await land(jobs.map((job) => job.g));
           break;
         }
         default:
@@ -371,6 +493,12 @@ export function mountBoard(app: Application, game: Game, hud: HudHooks): BoardVi
   });
   rebuild();
   return { rebuild };
+}
+
+function burstColor(tile: Tile): number {
+  if (tile.enraged) return 0xfb7185;
+  if (tile.blocker) return 0xa8a29e;
+  return PALETTE[tile.color] ?? 0xffffff;
 }
 
 function drawTile(g: Graphics, tile: Tile | null, size: number, selected: boolean): void {
