@@ -30,6 +30,18 @@ body {
   min-height: 0;
 }
 
+.build-version {
+  position: fixed;
+  left: max(10px, env(safe-area-inset-left));
+  bottom: max(8px, env(safe-area-inset-bottom));
+  margin: 0;
+  z-index: 40;
+  font-size: 11px;
+  letter-spacing: 0.04em;
+  color: #a1a1aa;
+  pointer-events: none;
+}
+
 #hud {
   flex: 0 0 auto;
   display: flex;
